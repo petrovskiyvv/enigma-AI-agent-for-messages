@@ -18,3 +18,5 @@ services:
       - "8000:8000"
     depends_on:
       - db
+    environment:
+      DATABASE_URL: postgresql://admin:password@db:5432/enigma_db
