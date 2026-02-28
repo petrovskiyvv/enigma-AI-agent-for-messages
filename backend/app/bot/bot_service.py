@@ -4,15 +4,16 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+import logging
 
 from app.core.config import settings
-from app.core.telegram_store import JsonTelegramChannelStore
-from app.core.telegram_ticket_store import JsonTelegramTicketStore
+from app.core.telegram_store import telegram_store
+from app.core.telegram_ticket_store import telegram_ticket_store
+from app.core.store import ticket_store
 
 TOKEN_RE = re.compile(r"\b[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}\b")
 
-store = JsonTelegramChannelStore()
-ticket_store = JsonTelegramTicketStore()
+logger = logging.getLogger(__name__)
 
 
 def _utc_now_iso() -> str:
@@ -100,7 +101,7 @@ async def _handle_action_callback(client: httpx.AsyncClient, upd: dict[str, Any]
 
     action, ticket_id = data.split(":", 1)
     ticket_id = ticket_id.strip()
-    t = ticket_store.get(ticket_id)
+    t = telegram_ticket_store.get(ticket_id)
     if not t:
         await _tg_call(client, "answerCallbackQuery", {"callback_query_id": cq_id, "text": "Заявка не найдена в хранилище."})
         return
@@ -112,32 +113,42 @@ async def _handle_action_callback(client: httpx.AsyncClient, upd: dict[str, Any]
     assignee = t.get("assignee")
     now = _utc_now_iso()
 
+    def _update_ticket_status(new_status: str) -> None:
+        try:
+            ticket_store.update(int(ticket_id), {"status": new_status})
+        except Exception:
+            logger.exception(
+                "Failed to update ticket status",
+                extra={"ticket_id": ticket_id, "status": new_status},
+            )
+
     if action == "decline":
+        _update_ticket_status("Новое")
         if assignee != actor:
             await _tg_call(client, "answerCallbackQuery", {"callback_query_id": cq_id, "text": "Отказаться может только текущий исполнитель."})
             return
         new_assignee = None
-        ticket_store.upsert_ticket(ticket_id, {"assignee": None})
-        ticket_store.add_event(ticket_id, {"ts": now, "type": "released", "by": actor})
+        telegram_ticket_store.upsert_ticket(ticket_id, {"assignee": None})
+        telegram_ticket_store.add_event(ticket_id, {"ts": now, "type": "released", "by": actor})
         action_text = "Вы отказались от запроса"
     else:
+        _update_ticket_status("В работе")
         if assignee is None:
             new_assignee = actor
-            ticket_store.upsert_ticket(ticket_id, {"assignee": new_assignee})
-            ticket_store.add_event(ticket_id, {"ts": now, "type": "taken", "by": actor})
+            telegram_ticket_store.upsert_ticket(ticket_id, {"assignee": new_assignee})
+            telegram_ticket_store.add_event(ticket_id, {"ts": now, "type": "taken", "by": actor})
             action_text = "Взято в работу"
         elif assignee == actor:
-            # на take повторно не снимаем — это делает отдельная кнопка decline
             await _tg_call(client, "answerCallbackQuery", {"callback_query_id": cq_id, "text": "У вас уже в работе. Используйте 'Отказаться от запроса'."})
             return
         else:
             prev = assignee
             new_assignee = actor
-            ticket_store.upsert_ticket(ticket_id, {"assignee": new_assignee})
-            ticket_store.add_event(ticket_id, {"ts": now, "type": "retaken", "by": actor, "prev": prev})
+            telegram_ticket_store.upsert_ticket(ticket_id, {"assignee": new_assignee})
+            telegram_ticket_store.add_event(ticket_id, {"ts": now, "type": "retaken", "by": actor, "prev": prev})
             action_text = f"Перевзято (было: {prev})"
 
-    t2 = ticket_store.get(ticket_id) or t
+    t2 = telegram_ticket_store.get(ticket_id) or t
     base_text = t2.get("base_text") or ""
     events2 = t2.get("events") or []
 
@@ -185,7 +196,7 @@ def _match_ticket_for_auto_forward(msg: dict[str, Any]) -> str | None:
     if discussion_chat_id is None or from_chat_id is None or from_message_id is None:
         return None
 
-    for t in ticket_store.list_all():
+    for t in telegram_ticket_store.list_all():
         try:
             if int(t.get("discussion_chat_id") or 0) != int(discussion_chat_id):
                 continue
@@ -195,6 +206,7 @@ def _match_ticket_for_auto_forward(msg: dict[str, Any]) -> str | None:
                 continue
             return str(t.get("ticket_id"))
         except Exception:
+            logger.exception("Unexpected error")
             continue
     return None
 
@@ -209,7 +221,7 @@ async def _handle_discussion_auto_forward(client: httpx.AsyncClient, upd: dict[s
     if not ticket_id:
         return
 
-    t = ticket_store.get(ticket_id)
+    t = telegram_ticket_store.get(ticket_id)
     if not t:
         return
 
@@ -218,7 +230,7 @@ async def _handle_discussion_auto_forward(client: httpx.AsyncClient, upd: dict[s
     if discussion_root_message_id is None or discussion_chat_id is None:
         return
 
-    ticket_store.upsert_ticket(ticket_id, {"discussion_root_message_id": discussion_root_message_id})
+    telegram_ticket_store.upsert_ticket(ticket_id, {"discussion_root_message_id": discussion_root_message_id})
 
     events = t.get("events") or []
     tl_msg_id = t.get("timeline_message_id")
@@ -246,7 +258,7 @@ async def _handle_discussion_auto_forward(client: httpx.AsyncClient, upd: dict[s
         },
     )
     if tl and tl.get("message_id"):
-        ticket_store.upsert_ticket(ticket_id, {"timeline_message_id": tl.get("message_id")})
+        telegram_ticket_store.upsert_ticket(ticket_id, {"timeline_message_id": tl.get("message_id")})
 
 
 async def run_polling() -> None:
@@ -273,19 +285,18 @@ async def run_polling() -> None:
                 for upd in data.get("result", []):
                     offset = upd.get("update_id", 0) + 1
 
-                    # inline-кнопки
                     if upd.get("callback_query"):
                         try:
                             await _handle_action_callback(client, upd)
                         except Exception:
-                            pass
+                            logger.exception("Unexpected error")
                         continue
 
                     if upd.get("message"):
                         try:
                             await _handle_discussion_auto_forward(client, upd)
                         except Exception:
-                            pass
+                            logger.exception("Unexpected error")
 
                     chat_id, text, title, chat_type = _extract_text(upd)
                     if not chat_id or not text:
@@ -296,7 +307,7 @@ async def run_polling() -> None:
                         continue
 
                     token = m.group(0)
-                    ok = store.consume_token_and_register_channel(
+                    ok = telegram_store.consume_token_and_register_channel(
                         token=token,
                         chat_id=int(chat_id),
                         title=title,
@@ -307,6 +318,7 @@ async def run_polling() -> None:
                     else:
                         await _send_message(client, int(chat_id), "❌ Токен не найден или истёк. Сгенерируйте новый в веб-интерфейсе.")
             except Exception:
+                logger.exception("Unexpected error")
                 await asyncio.sleep(2)
 
 
