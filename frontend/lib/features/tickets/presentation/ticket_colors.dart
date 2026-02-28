@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
 Color toneColor(BuildContext context, String tone) => switch (tone) {
-      'Негатив' => context.colors.negative,
-      'Позитив' => context.colors.positive,
-      _         => context.colors.neutral,
-    };
+  'Негатив' => context.colors.negative,
+  'Позитив' => context.colors.positive,
+  _         => context.colors.neutral,
+};
 
 Color statusColor(BuildContext context, String status) => switch (status) {
-      'Новое'    => context.colors.statusNew,
-      'В работе' => context.colors.neutral,
-      'Закрыто'  => context.colors.accent,
-      _          => context.colors.textSecondary,
-    };
+  'Новое'       => context.colors.statusNew,
+  'В работе'    => context.colors.neutral,
+  'Отправлено'  => context.colors.positive,
+  'Закрыто'     => context.colors.accent,
+  _             => context.colors.textSecondary,
+};
 
 String formatDate(String iso) {
   try {
