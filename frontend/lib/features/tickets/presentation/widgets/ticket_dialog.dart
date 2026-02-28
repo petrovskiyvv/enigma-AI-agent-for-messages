@@ -20,6 +20,8 @@ class _TicketDialogState extends State<TicketDialog> {
   late String _status;
   bool _saving = false;
 
+  static const _statuses = ['Новое', 'В работе', 'Отправлено', 'Закрыто'];
+
   @override
   void initState() {
     super.initState();
@@ -236,7 +238,7 @@ class _TicketDialogState extends State<TicketDialog> {
                 value: _status,
                 dropdownColor: colors.card,
                 style: TextStyle(color: colors.text, fontSize: 13),
-                items: ['Новое', 'В работе', 'Закрыто']
+                items: _statuses
                     .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                     .toList(),
                 onChanged: (v) => setState(() => _status = v!),
