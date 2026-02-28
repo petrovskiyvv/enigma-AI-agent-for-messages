@@ -9,3 +9,4 @@ pytest==8.3.5
 pytest-cov==6.0.0
 httpx==0.28.1          # нужен FastAPI TestClient
 anyio==4.8.0           # async support для httpx
+pytest-asyncio
