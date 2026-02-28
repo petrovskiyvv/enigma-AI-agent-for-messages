@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../analyze/presentation/analyze_screen.dart';
@@ -7,9 +7,6 @@ import '../../stats/presentation/stats_screen.dart';
 import '../../tickets/data/ticket_repository.dart';
 import '../../tickets/presentation/tickets_screen.dart';
 import '../../../main.dart';
-
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html show AnchorElement;
 
 const _kBaseUrl = 'http://127.0.0.1:8000';
 
@@ -37,16 +34,15 @@ class _AppShellState extends State<AppShell> {
     } catch (_) {}
   }
 
-  void _download(String format) {
-    final url = '$_kBaseUrl/api/export/$format';
-    if (kIsWeb) {
-      html.AnchorElement(href: url)
-        ..setAttribute('download', 'tickets_export.$format')
-        ..click();
+  Future<void> _download(String format) async {
+    final url = Uri.parse('$_kBaseUrl/api/export/$format');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Откройте в браузере: $url'),
+          content: Text('Не удалось открыть: $url'),
           backgroundColor: context.colors.card,
           action: SnackBarAction(
             label: 'OK',
@@ -105,9 +101,9 @@ class _DesktopHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors   = context.colors;
-    final appState = EnigmaApp.of(context);
-    final width    = MediaQuery.of(context).size.width;
+    final colors      = context.colors;
+    final appState    = EnigmaApp.of(context);
+    final width       = MediaQuery.of(context).size.width;
     final showSubtitle = width > 800;
 
     return Container(
