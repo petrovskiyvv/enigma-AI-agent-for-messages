@@ -14,6 +14,10 @@ class _CreateRepository {
     final data = await _client.post('/api/tickets', fields);
     return Ticket.fromJson(data as Map<String, dynamic>);
   }
+  Future<Ticket> analyze(String text) async {
+    final data = await _client.post('/api/analyze', {'text': text});
+    return Ticket.fromJson(data as Map<String, dynamic>);
+  }
 }
 
 final _repo = _CreateRepository(apiClient);
@@ -26,24 +30,38 @@ class AnalyzeScreen extends StatefulWidget {
   State<AnalyzeScreen> createState() => _AnalyzeScreenState();
 }
 
-class _AnalyzeScreenState extends State<AnalyzeScreen> {
+class _AnalyzeScreenState extends State<AnalyzeScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+
   Ticket? _result;
   bool _loading = false;
   String? _error;
 
-  final _fullNameCtrl   = TextEditingController();
-  final _facilityCtrl   = TextEditingController();
-  final _phoneCtrl      = TextEditingController();
-  final _emailCtrl      = TextEditingController();
-  final _deviceNumCtrl  = TextEditingController();
-  final _deviceTypeCtrl = TextEditingController();
-  final _textCtrl       = TextEditingController();
+  final _fullNameCtrl    = TextEditingController();
+  final _facilityCtrl    = TextEditingController();
+  final _phoneCtrl       = TextEditingController();
+  final _emailCtrl       = TextEditingController();
+  final _deviceNumCtrl   = TextEditingController();
+  final _deviceTypeCtrl  = TextEditingController();
+  final _textCtrl        = TextEditingController();
+  final _analyzeCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 2, vsync: this);
+    _tabs.addListener(() {
+      if (!_tabs.indexIsChanging) setState(() { _result = null; _error = null; });
+    });
+  }
 
   @override
   void dispose() {
+    _tabs.dispose();
     for (final c in [
       _fullNameCtrl, _facilityCtrl, _phoneCtrl, _emailCtrl,
-      _deviceNumCtrl, _deviceTypeCtrl, _textCtrl,
+      _deviceNumCtrl, _deviceTypeCtrl, _textCtrl, _analyzeCtrl,
     ]) { c.dispose(); }
     super.dispose();
   }
@@ -72,20 +90,19 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     }
   }
 
-  void _fillTestData() {
-    _fullNameCtrl.text   = 'Петров Алексей Владимирович';
-    _facilityCtrl.text   = 'ОАО «Нефтехим», г. Уфа';
-    _phoneCtrl.text      = '+7 (347) 255-10-42';
-    _emailCtrl.text      = 'a.petrov@neftekhim.ru';
-    _deviceNumCtrl.text  = 'НК-0471, НК-0472';
-    _deviceTypeCtrl.text = 'Газоанализатор ГС-812';
-    _textCtrl.text       =
-        'Добрый день! Обращаюсь по вопросу некорректной работы газоанализаторов ГС-812 '
-        '(зав. номера НК-0471 и НК-0472). Приборы установлены на объекте ОАО «Нефтехим» '
-        'в г. Уфа. В течение последних двух недель фиксируются ложные срабатывания датчика '
-        'CO2 при показаниях ниже порогового значения. Прошу организовать выезд специалиста '
-        'для диагностики оборудования или дать рекомендации по устранению неисправности.';
-    setState(() {});
+  Future<void> _submitAnalyze() async {
+    if (_analyzeCtrl.text.trim().isEmpty) return;
+    setState(() { _loading = true; _error = null; _result = null; });
+    try {
+      final ticket = await _repo.analyze(_analyzeCtrl.text);
+      setState(() => _result = ticket);
+      widget.onTicketCreated();
+      _analyzeCtrl.clear();
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      setState(() => _loading = false);
+    }
   }
 
   void _clearManualForm() {
@@ -99,6 +116,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final mobile = isMobile(context);
 
     return Column(
@@ -122,7 +140,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(mobile ? 16 : 28, 20, 28, 20),
+            padding: EdgeInsets.fromLTRB(mobile ? 16 : 28, 20, 28, 0),
             child: Row(
               children: [
                 Container(
@@ -150,6 +168,12 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: mobile ? 16 : 28),
+            child: _TabSwitch(controller: _tabs, mobile: mobile),
+          ),
+          const SizedBox(height: 1),
           Divider(height: 1, color: colors.border),
         ],
       ),
@@ -162,20 +186,32 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       children: [
         Expanded(
           flex: 55,
-          child: _ManualForm(
-            ctrls: _ManualCtrls(
-              fullName: _fullNameCtrl, facility: _facilityCtrl,
-              phone: _phoneCtrl, email: _emailCtrl,
-              deviceNum: _deviceNumCtrl, deviceType: _deviceTypeCtrl,
-              text: _textCtrl,
-            ),
-            loading: _loading,
-            onSubmit: _submitManual,
-            onFillTest: _fillTestData,
-            onReset: _resetResult,
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              _ManualForm(
+                ctrls: _ManualCtrls(
+                  fullName: _fullNameCtrl, facility: _facilityCtrl,
+                  phone: _phoneCtrl, email: _emailCtrl,
+                  deviceNum: _deviceNumCtrl, deviceType: _deviceTypeCtrl,
+                  text: _textCtrl,
+                ),
+                loading: _loading,
+                onSubmit: _submitManual,
+                onReset: _resetResult,
+              ),
+              _AnalyzeForm(
+                ctrl: _analyzeCtrl,
+                loading: _loading,
+                onSubmit: _submitAnalyze,
+                onReset: _resetResult,
+              ),
+            ],
           ),
         ),
+        // Разделитель
         VerticalDivider(width: 1, color: context.colors.border),
+        // Правая панель — результат
         Expanded(
           flex: 45,
           child: _ResultPanel(result: _result, error: _error),
@@ -188,18 +224,33 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          _ManualForm(
-            ctrls: _ManualCtrls(
-              fullName: _fullNameCtrl, facility: _facilityCtrl,
-              phone: _phoneCtrl, email: _emailCtrl,
-              deviceNum: _deviceNumCtrl, deviceType: _deviceTypeCtrl,
-              text: _textCtrl,
+          SizedBox(
+            height: _result != null ? null : 600,
+            child: TabBarView(
+              controller: _tabs,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _ManualForm(
+                  ctrls: _ManualCtrls(
+                    fullName: _fullNameCtrl, facility: _facilityCtrl,
+                    phone: _phoneCtrl, email: _emailCtrl,
+                    deviceNum: _deviceNumCtrl, deviceType: _deviceTypeCtrl,
+                    text: _textCtrl,
+                  ),
+                  loading: _loading,
+                  onSubmit: _submitManual,
+                  onReset: _resetResult,
+                  mobile: true,
+                ),
+                _AnalyzeForm(
+                  ctrl: _analyzeCtrl,
+                  loading: _loading,
+                  onSubmit: _submitAnalyze,
+                  onReset: _resetResult,
+                  mobile: true,
+                ),
+              ],
             ),
-            loading: _loading,
-            onSubmit: _submitManual,
-            onFillTest: _fillTestData,
-            onReset: _resetResult,
-            mobile: true,
           ),
           if (_result != null || _error != null) ...[
             Divider(color: context.colors.border),
@@ -211,7 +262,76 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   }
 }
 
-// ─── Manual form ─────────────────────────────────────────────────────────────
+class _TabSwitch extends StatefulWidget {
+  const _TabSwitch({required this.controller, required this.mobile});
+  final TabController controller;
+  final bool mobile;
+
+  @override
+  State<_TabSwitch> createState() => _TabSwitchState();
+}
+
+class _TabSwitchState extends State<_TabSwitch> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(() => setState(() {}));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final tabs = [
+      (Icons.edit_note_rounded,   'Вручную'),
+      (Icons.auto_awesome_rounded, 'Авто-анализ письма'),
+    ];
+
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(tabs.length, (i) {
+          final active = widget.controller.index == i;
+          return GestureDetector(
+            onTap: () => widget.controller.animateTo(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              margin: const EdgeInsets.all(3),
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.mobile ? 12 : 16,
+                vertical: 5,
+              ),
+              decoration: BoxDecoration(
+                color: active ? colors.accent : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(tabs[i].$1,
+                      size: 14,
+                      color: active ? colors.bg : colors.textSecondary),
+                  const SizedBox(width: 6),
+                  Text(tabs[i].$2,
+                      style: TextStyle(
+                        color: active ? colors.bg : colors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                      )),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
 
 class _ManualCtrls {
   const _ManualCtrls({
@@ -237,7 +357,6 @@ class _ManualForm extends StatelessWidget {
     required this.ctrls,
     required this.loading,
     required this.onSubmit,
-    required this.onFillTest,
     required this.onReset,
     this.mobile = false,
   });
@@ -245,7 +364,128 @@ class _ManualForm extends StatelessWidget {
   final _ManualCtrls ctrls;
   final bool loading;
   final VoidCallback onSubmit;
-  final VoidCallback onFillTest;
+  final VoidCallback onReset;
+  final bool mobile;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel(icon: Icons.person_outline_rounded, label: 'Контактные данные'),
+        const SizedBox(height: 12),
+        if (mobile) ...[
+          _Field(label: 'ФИО', ctrl: ctrls.fullName, hint: 'Иванов Иван Иванович'),
+          const SizedBox(height: 10),
+          _Field(label: 'Объект / организация', ctrl: ctrls.facility, hint: 'ООО «Завод», г. Казань'),
+          const SizedBox(height: 10),
+          _Field(label: 'Телефон', ctrl: ctrls.phone, hint: '+7 (999) 000-00-00',
+              keyboard: TextInputType.phone),
+          const SizedBox(height: 10),
+          _Field(label: 'Email', ctrl: ctrls.email, hint: 'ivan@company.ru',
+              keyboard: TextInputType.emailAddress),
+        ] else ...[
+          Row(children: [
+            Expanded(child: _Field(label: 'ФИО', ctrl: ctrls.fullName,
+                hint: 'Иванов Иван Иванович')),
+            const SizedBox(width: 14),
+            Expanded(child: _Field(label: 'Объект / организация', ctrl: ctrls.facility,
+                hint: 'ООО «Завод», г. Казань')),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: _Field(label: 'Телефон', ctrl: ctrls.phone,
+                hint: '+7 (999) 000-00-00', keyboard: TextInputType.phone)),
+            const SizedBox(width: 14),
+            Expanded(child: _Field(label: 'Email', ctrl: ctrls.email,
+                hint: 'ivan@company.ru', keyboard: TextInputType.emailAddress)),
+          ]),
+        ],
+
+        const SizedBox(height: 20),
+        _Divider(),
+        const SizedBox(height: 20),
+        _SectionLabel(icon: Icons.settings_outlined, label: 'Оборудование'),
+        const SizedBox(height: 12),
+        if (mobile) ...[
+          _Field(label: 'Заводские номера', ctrl: ctrls.deviceNum,
+              hint: 'НК-001, НК-002'),
+          const SizedBox(height: 10),
+          _Field(label: 'Тип прибора', ctrl: ctrls.deviceType,
+              hint: 'Газоанализатор ГС-812'),
+        ] else
+          Row(children: [
+            Expanded(child: _Field(label: 'Заводские номера', ctrl: ctrls.deviceNum,
+                hint: 'НК-001, НК-002')),
+            const SizedBox(width: 14),
+            Expanded(child: _Field(label: 'Тип прибора', ctrl: ctrls.deviceType,
+                hint: 'Газоанализатор ГС-812')),
+          ]),
+
+        const SizedBox(height: 20),
+        _Divider(),
+        const SizedBox(height: 20),
+        _SectionLabel(icon: Icons.message_outlined, label: 'Текст обращения'),
+        const SizedBox(height: 10),
+        _Hint(text: 'ИИ автоматически определит тональность, категорию и сгенерирует черновик ответа'),
+        const SizedBox(height: 10),
+        _Field(
+          label: '',
+          ctrl: ctrls.text,
+          hint: 'Опишите суть обращения подробно...',
+          maxLines: mobile ? 5 : 6,
+          minLines: mobile ? 5 : 6,
+        ),
+
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: loading ? null : onSubmit,
+                icon: loading
+                    ? SizedBox(
+                  width: 15, height: 15,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: colors.bg),
+                )
+                    : const Icon(Icons.add_circle_outline_rounded, size: 16),
+                label: Text(loading ? 'Создаю...' : 'Создать обращение'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.accent,
+                  foregroundColor: colors.bg,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(mobile ? 16 : 24),
+      child: content,
+    );
+  }
+}
+
+class _AnalyzeForm extends StatelessWidget {
+  const _AnalyzeForm({
+    required this.ctrl,
+    required this.loading,
+    required this.onSubmit,
+    required this.onReset,
+    this.mobile = false,
+  });
+
+  final TextEditingController ctrl;
+  final bool loading;
+  final VoidCallback onSubmit;
   final VoidCallback onReset;
   final bool mobile;
 
@@ -258,149 +498,61 @@ class _ManualForm extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Кнопка тестовых данных
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              OutlinedButton.icon(
-                onPressed: onFillTest,
-                icon: const Icon(Icons.science_outlined, size: 14),
-                label: const Text('Тестовые данные',
-                    style: TextStyle(fontSize: 12)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.accent,
-                  side: BorderSide(color: colors.accent.withOpacity(0.5)),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
+          _SectionLabel(icon: Icons.auto_awesome_rounded, label: 'Вставьте текст письма'),
+          const SizedBox(height: 8),
+          _Hint(text: 'ИИ автоматически извлечёт ФИО, контакты, номера приборов, определит тональность и категорию обращения'),
+          const SizedBox(height: 14),
+
+          // Поле текста
+          Container(
+            decoration: BoxDecoration(
+              color: colors.card,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: colors.border),
+            ),
+            child: TextField(
+              controller: ctrl,
+              maxLines: mobile ? 10 : null,
+              minLines: mobile ? 10 : 8,
+              style: TextStyle(color: colors.text, fontSize: 13, height: 1.7),
+              decoration: InputDecoration(
+                hintText: 'Добрый день! Обращаюсь по поводу газоанализатора ГС-812...',
+                hintStyle: TextStyle(color: colors.textSecondary.withOpacity(0.6)),
+                contentPadding: const EdgeInsets.all(16),
+                border: InputBorder.none,
               ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: const [
+              _ExtractChip(label: 'ФИО'),
+              _ExtractChip(label: 'Телефон'),
+              _ExtractChip(label: 'Email'),
+              _ExtractChip(label: 'Заводские номера'),
+              _ExtractChip(label: 'Тональность'),
+              _ExtractChip(label: 'Категория'),
+              _ExtractChip(label: 'Черновик ответа'),
             ],
           ),
-          const SizedBox(height: 16),
-
-          _SectionLabel(
-              icon: Icons.person_outline_rounded,
-              label: 'Контактные данные'),
-          const SizedBox(height: 12),
-          if (mobile) ...[
-            _Field(
-                label: 'ФИО',
-                ctrl: ctrls.fullName,
-                hint: 'Иванов Иван Иванович'),
-            const SizedBox(height: 10),
-            _Field(
-                label: 'Объект / организация',
-                ctrl: ctrls.facility,
-                hint: 'ООО «Завод», г. Казань'),
-            const SizedBox(height: 10),
-            _Field(
-                label: 'Телефон',
-                ctrl: ctrls.phone,
-                hint: '+7 (999) 000-00-00',
-                keyboard: TextInputType.phone),
-            const SizedBox(height: 10),
-            _Field(
-                label: 'Email',
-                ctrl: ctrls.email,
-                hint: 'ivan@company.ru',
-                keyboard: TextInputType.emailAddress),
-          ] else ...[
-            Row(children: [
-              Expanded(
-                  child: _Field(
-                      label: 'ФИО',
-                      ctrl: ctrls.fullName,
-                      hint: 'Иванов Иван Иванович')),
-              const SizedBox(width: 14),
-              Expanded(
-                  child: _Field(
-                      label: 'Объект / организация',
-                      ctrl: ctrls.facility,
-                      hint: 'ООО «Завод», г. Казань')),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                  child: _Field(
-                      label: 'Телефон',
-                      ctrl: ctrls.phone,
-                      hint: '+7 (999) 000-00-00',
-                      keyboard: TextInputType.phone)),
-              const SizedBox(width: 14),
-              Expanded(
-                  child: _Field(
-                      label: 'Email',
-                      ctrl: ctrls.email,
-                      hint: 'ivan@company.ru',
-                      keyboard: TextInputType.emailAddress)),
-            ]),
-          ],
 
           const SizedBox(height: 20),
-          _Divider(),
-          const SizedBox(height: 20),
-          _SectionLabel(
-              icon: Icons.settings_outlined, label: 'Оборудование'),
-          const SizedBox(height: 12),
-          if (mobile) ...[
-            _Field(
-                label: 'Заводские номера',
-                ctrl: ctrls.deviceNum,
-                hint: 'НК-001, НК-002'),
-            const SizedBox(height: 10),
-            _Field(
-                label: 'Тип прибора',
-                ctrl: ctrls.deviceType,
-                hint: 'Газоанализатор ГС-812'),
-          ] else
-            Row(children: [
-              Expanded(
-                  child: _Field(
-                      label: 'Заводские номера',
-                      ctrl: ctrls.deviceNum,
-                      hint: 'НК-001, НК-002')),
-              const SizedBox(width: 14),
-              Expanded(
-                  child: _Field(
-                      label: 'Тип прибора',
-                      ctrl: ctrls.deviceType,
-                      hint: 'Газоанализатор ГС-812')),
-            ]),
 
-          const SizedBox(height: 20),
-          _Divider(),
-          const SizedBox(height: 20),
-          _SectionLabel(
-              icon: Icons.message_outlined, label: 'Текст обращения'),
-          const SizedBox(height: 10),
-          _Hint(
-              text:
-                  'ИИ автоматически определит тональность, категорию и сгенерирует черновик ответа'),
-          const SizedBox(height: 10),
-          _Field(
-            label: '',
-            ctrl: ctrls.text,
-            hint: 'Опишите суть обращения подробно...',
-            maxLines: mobile ? 5 : 6,
-            minLines: mobile ? 5 : 6,
-          ),
-
-          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: loading ? null : onSubmit,
               icon: loading
                   ? SizedBox(
-                      width: 15,
-                      height: 15,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: colors.bg),
-                    )
-                  : const Icon(Icons.add_circle_outline_rounded, size: 16),
-              label: Text(loading ? 'Создаю...' : 'Создать обращение'),
+                width: 15, height: 15,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: colors.bg),
+              )
+                  : const Icon(Icons.auto_awesome_rounded, size: 16),
+              label: Text(loading ? 'Анализирую...' : 'Анализировать и создать'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.accent,
                 foregroundColor: colors.bg,
@@ -415,8 +567,6 @@ class _ManualForm extends StatelessWidget {
     );
   }
 }
-
-// ─── Result panel ─────────────────────────────────────────────────────────────
 
 class _ResultPanel extends StatelessWidget {
   const _ResultPanel({this.result, this.error, this.mobile = false});
@@ -435,7 +585,9 @@ class _ResultPanel extends StatelessWidget {
       );
     }
 
-    if (result == null) return _EmptyState();
+    if (result == null) {
+      return _EmptyState();
+    }
 
     final t = result!;
     return SingleChildScrollView(
@@ -444,18 +596,15 @@ class _ResultPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: colors.accent.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
-              border:
-                  Border.all(color: colors.accent.withOpacity(0.3)),
+              border: Border.all(color: colors.accent.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                Icon(Icons.check_circle_rounded,
-                    color: colors.accent, size: 18),
+                Icon(Icons.check_circle_rounded, color: colors.accent, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -468,15 +617,16 @@ class _ResultPanel extends StatelessWidget {
                               fontSize: 13)),
                       Text('Заявка #${t.id} добавлена в систему',
                           style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 11)),
+                              color: colors.textSecondary, fontSize: 11)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
+
           const SizedBox(height: 16),
+
           _ResultCard(
             icon: Icons.psychology_outlined,
             title: 'Классификация',
@@ -494,7 +644,9 @@ class _ResultPanel extends StatelessWidget {
               ],
             ),
           ),
+
           const SizedBox(height: 12),
+
           _ResultCard(
             icon: Icons.person_outline_rounded,
             title: 'Данные клиента',
@@ -512,15 +664,14 @@ class _ResultPanel extends StatelessWidget {
                   _DataRow(label: 'Приборы', value: t.deviceNumbers),
                 if (t.deviceType.isNotEmpty)
                   _DataRow(label: 'Тип', value: t.deviceType),
-                if (t.fullName.isEmpty &&
-                    t.phone.isEmpty &&
-                    t.email.isEmpty)
+                if (t.fullName.isEmpty && t.phone.isEmpty && t.email.isEmpty)
                   Text('—',
                       style: TextStyle(
                           color: colors.textSecondary, fontSize: 13)),
               ],
             ),
           ),
+
           if (t.issueSummary.isNotEmpty) ...[
             const SizedBox(height: 12),
             _ResultCard(
@@ -531,6 +682,7 @@ class _ResultPanel extends StatelessWidget {
                       color: colors.text, fontSize: 13, height: 1.5)),
             ),
           ],
+
           if (t.aiResponse.isNotEmpty) ...[
             const SizedBox(height: 12),
             _ResultCard(
@@ -549,8 +701,6 @@ class _ResultPanel extends StatelessWidget {
   }
 }
 
-// ─── Shared helpers ───────────────────────────────────────────────────────────
-
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.icon, required this.label});
   final IconData icon;
@@ -565,9 +715,10 @@ class _SectionLabel extends StatelessWidget {
         const SizedBox(width: 7),
         Text(label,
             style: TextStyle(
-                color: colors.text,
-                fontSize: 13,
-                fontWeight: FontWeight.w600)),
+              color: colors.text,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            )),
       ],
     );
   }
@@ -581,8 +732,7 @@ class _Hint extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: colors.accentDim,
         borderRadius: BorderRadius.circular(8),
@@ -591,15 +741,12 @@ class _Hint extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded,
-              size: 13, color: colors.accent),
+          Icon(Icons.info_outline_rounded, size: 13, color: colors.accent),
           const SizedBox(width: 7),
           Expanded(
             child: Text(text,
                 style: TextStyle(
-                    color: colors.textSecondary,
-                    fontSize: 11,
-                    height: 1.4)),
+                    color: colors.textSecondary, fontSize: 11, height: 1.4)),
           ),
         ],
       ),
@@ -647,8 +794,7 @@ class _Field extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
-                color: colors.textSecondary.withOpacity(0.5),
-                fontSize: 12),
+                color: colors.textSecondary.withOpacity(0.5), fontSize: 12),
             filled: true,
             fillColor: colors.card,
             contentPadding: const EdgeInsets.symmetric(
@@ -663,9 +809,9 @@ class _Field extends StatelessWidget {
   }
 
   OutlineInputBorder _border(Color c) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(9),
-        borderSide: BorderSide(color: c),
-      );
+    borderRadius: BorderRadius.circular(9),
+    borderSide: BorderSide(color: c),
+  );
 }
 
 class _Divider extends StatelessWidget {
@@ -674,11 +820,42 @@ class _Divider extends StatelessWidget {
       Divider(height: 1, color: context.colors.border);
 }
 
+class _ExtractChip extends StatelessWidget {
+  const _ExtractChip({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: colors.accentDim,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.accent.withOpacity(0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome, size: 9, color: colors.accent),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  color: colors.accent, fontSize: 10,
+                  fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
 class _ResultCard extends StatelessWidget {
-  const _ResultCard(
-      {required this.icon,
-      required this.title,
-      required this.child});
+  const _ResultCard({
+    required this.icon,
+    required this.title,
+    required this.child,
+  });
+
   final IconData icon;
   final String title;
   final Widget child;
@@ -738,8 +915,7 @@ class _DataRow extends StatelessWidget {
           ),
           Expanded(
             child: Text(value,
-                style:
-                    TextStyle(color: colors.text, fontSize: 13)),
+                style: TextStyle(color: colors.text, fontSize: 13)),
           ),
         ],
       ),
@@ -760,14 +936,12 @@ class _ErrorCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.negative.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
-        border:
-            Border.all(color: colors.negative.withOpacity(0.3)),
+        border: Border.all(color: colors.negative.withOpacity(0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.error_outline_rounded,
-              color: colors.negative, size: 18),
+          Icon(Icons.error_outline_rounded, color: colors.negative, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -781,9 +955,7 @@ class _ErrorCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(message,
                     style: TextStyle(
-                        color: colors.textSecondary,
-                        fontSize: 12,
-                        height: 1.4)),
+                        color: colors.textSecondary, fontSize: 12, height: 1.4)),
               ],
             ),
           ),
@@ -807,8 +979,7 @@ class _EmptyState extends StatelessWidget {
               color: colors.accentDim,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.inbox_outlined,
-                size: 36, color: colors.accent),
+            child: Icon(Icons.inbox_outlined, size: 36, color: colors.accent),
           ),
           const SizedBox(height: 16),
           Text('Результат появится здесь',
@@ -818,8 +989,7 @@ class _EmptyState extends StatelessWidget {
                   fontSize: 14)),
           const SizedBox(height: 6),
           Text('Заполните форму и нажмите кнопку создания',
-              style: TextStyle(
-                  color: colors.textSecondary, fontSize: 12)),
+              style: TextStyle(color: colors.textSecondary, fontSize: 12)),
         ],
       ),
     );

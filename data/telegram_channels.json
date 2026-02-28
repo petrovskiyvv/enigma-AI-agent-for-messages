@@ -1,0 +1,17 @@
+{
+  "channels": [
+    {
+      "chat_id": -1003844766650,
+      "type": "channel",
+      "title": "Тест Бота",
+      "registered_at": "2026-02-28T10:50:18.238883+00:00",
+      "active": true
+    }
+  ],
+  "pending_tokens": [
+    {
+      "token": "94435239-9f78-4ec1-bfd3-4b11b277db78",
+      "expires_at": "2026-02-28T12:23:01.178555+00:00"
+    }
+  ]
+}
