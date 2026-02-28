@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     email          VARCHAR(255),
     device_numbers TEXT,
     device_type    VARCHAR(255),
-    emotional_tone VARCHAR(50)  CHECK (emotional_tone IN ('Позитив', 'Нейтраль', 'Негатив')),
+    emotional_tone VARCHAR(50)  CHECK (emotional_tone IN ('Позитив', 'Нейтрально', 'Негатив')),
     category       VARCHAR(100) DEFAULT 'Общий вопрос',
     issue_summary  TEXT,
     original_text  TEXT,

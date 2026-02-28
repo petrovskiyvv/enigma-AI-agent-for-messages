@@ -51,7 +51,7 @@ class JsonTicketStore:
                     "email": "petrova@gazsnab.ru",
                     "device_numbers": "А-2241",
                     "device_type": "Газоанализатор ПГА-7",
-                    "emotional_tone": "Нейтраль",
+                    "emotional_tone": "Нейтрально",
                     "category": "Документация",
                     "issue_summary": "Запрос актуального паспорта на прибор ПГА-7",
                     "original_text": (
@@ -163,7 +163,7 @@ class JsonTicketStore:
         by_status: dict[str, int] = {}
 
         for t in self._tickets:
-            tone = t.get("emotional_tone", "Нейтраль")
+            tone = t.get("emotional_tone", "Нейтрально")
             cat = t.get("category", "Другое")
             status = t.get("status", "Новое")
             by_tone[tone] = by_tone.get(tone, 0) + 1

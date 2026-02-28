@@ -28,7 +28,7 @@ def make_ticket(**kwargs) -> dict:
         "full_name": "Тестов Тест", "facility": "Завод",
         "phone": "+7 (000) 000-00-00", "email": "t@t.ru",
         "device_numbers": "TST-001", "device_type": "Прибор",
-        "original_text": "Текст", "emotional_tone": "Нейтраль",
+        "original_text": "Текст", "emotional_tone": "Нейтрально",
         "category": "Общий вопрос", "issue_summary": "Описание",
         "ai_response": "Ответ", "status": "Новое",
     }
@@ -276,7 +276,7 @@ class TestStats:
     def test_by_tone_counts(self, store_with_data):
         s = store_with_data.stats()
         assert s["by_tone"]["Негатив"] == 1
-        assert s["by_tone"]["Нейтраль"] == 1
+        assert s["by_tone"]["Нейтрально"] == 1
         assert s["by_tone"]["Позитив"] == 1
 
     def test_by_category_counts(self, store_with_data):
