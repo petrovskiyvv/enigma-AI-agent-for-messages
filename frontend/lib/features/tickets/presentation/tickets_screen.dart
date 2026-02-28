@@ -84,18 +84,18 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
     final statusDropdown = FilterDropdown(
       hint: 'Статус',
-      items: const ['Новое', 'В работе', 'Закрыто'],
+      items: const ['Новое', 'В работе', 'Отправлено', 'Закрыто'],
       value: _filterStatus,
       onChanged: (v) { setState(() => _filterStatus = v); _load(); },
     );
     final resetBtn = (_filterTone != null || _filterStatus != null)
         ? TextButton(
-            onPressed: () {
-              setState(() { _filterTone = null; _filterStatus = null; });
-              _load();
-            },
-            child: Text('Сбросить', style: TextStyle(color: colors.accent, fontSize: 12)),
-          )
+      onPressed: () {
+        setState(() { _filterTone = null; _filterStatus = null; });
+        _load();
+      },
+      child: Text('Сбросить', style: TextStyle(color: colors.accent, fontSize: 12)),
+    )
         : null;
 
     return Container(
@@ -103,26 +103,26 @@ class _TicketsScreenState extends State<TicketsScreen> {
       color: colors.surface,
       child: mobile
           ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                searchField,
-                const SizedBox(height: 8),
-                Row(children: [
-                  toneDropdown,
-                  const SizedBox(width: 8),
-                  statusDropdown,
-                  if (resetBtn != null) ...[const SizedBox(width: 4), resetBtn],
-                ]),
-              ],
-            )
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          searchField,
+          const SizedBox(height: 8),
+          Row(children: [
+            toneDropdown,
+            const SizedBox(width: 8),
+            statusDropdown,
+            if (resetBtn != null) ...[const SizedBox(width: 4), resetBtn],
+          ]),
+        ],
+      )
           : Row(children: [
-              Expanded(child: searchField),
-              const SizedBox(width: 10),
-              toneDropdown,
-              const SizedBox(width: 10),
-              statusDropdown,
-              if (resetBtn != null) ...[const SizedBox(width: 10), resetBtn],
-            ]),
+        Expanded(child: searchField),
+        const SizedBox(width: 10),
+        toneDropdown,
+        const SizedBox(width: 10),
+        statusDropdown,
+        if (resetBtn != null) ...[const SizedBox(width: 10), resetBtn],
+      ]),
     );
   }
 
