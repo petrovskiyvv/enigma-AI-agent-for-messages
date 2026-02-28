@@ -1,181 +1,131 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
-import json
-from pathlib import Path
-from typing import Optional, Any
+from typing import Any
+
+from sqlalchemy import or_, select, func, desc
+
+from app.core.db import SessionLocal
+from app.core.models import Ticket
 
 
-class JsonTicketStore:
-    def __init__(self, path: str = "tickets.json"):
-        self._path = Path(path)
-        self._tickets: list[dict[str, Any]] = []
-        self._next_id: int = 1
-        if self._path.exists():
-            self._load()
-        else:
-            # Начальные данные (как в вашем примере)
-            self._tickets = [
-                {
-                    "id": 1,
-                    "created_at": "2026-02-25T09:14:00",
-                    "full_name": "Иванов Иван Иванович",
-                    "facility": "Завод №1, г. Казань",
-                    "phone": "+7 (999) 123-45-67",
-                    "email": "ivanov@zavod1.ru",
-                    "device_numbers": "12345, 67890",
-                    "device_type": "Газоанализатор ГС-812",
-                    "emotional_tone": "Негатив",
-                    "category": "Неисправность",
-                    "issue_summary": "Прибор не включается после плановой калибровки",
-                    "original_text": (
-                        "Добрый день! Обращаюсь по поводу газоанализатора ГС-812 "
-                        "(зав. №12345, 67890). После проведения плановой калибровки "
-                        "прибор перестал включаться. Индикатор питания мигает красным. "
-                        "Прошу срочно помочь, остановка производства несёт значительные убытки."
-                    ),
-                    "ai_response": (
-                        "Уважаемый Иван Иванович!\n\n"
-                        "По описанным симптомам рекомендуем:\n"
-                        "1. Отключите прибор от сети на 30 секунд.\n"
-                        "2. Проверьте давление калибровочного газа (0.5–1.5 бар).\n"
-                        "3. Удерживайте кнопку MENU 10 секунд для сброса настроек.\n\n"
-                        "С уважением, Служба технической поддержки ЭРИС"
-                    ),
-                    "status": "Новое",
-                },
-                {
-                    "id": 2,
-                    "created_at": "2026-02-25T11:30:00",
-                    "full_name": "Петрова Светлана Юрьевна",
-                    "facility": "ООО «ГазСнаб», г. Уфа",
-                    "phone": "+7 (347) 200-10-20",
-                    "email": "petrova@gazsnab.ru",
-                    "device_numbers": "А-2241",
-                    "device_type": "Газоанализатор ПГА-7",
-                    "emotional_tone": "Нейтрально",
-                    "category": "Документация",
-                    "issue_summary": "Запрос актуального паспорта на прибор ПГА-7",
-                    "original_text": (
-                        "Здравствуйте. Просим предоставить актуальный паспорт и сертификат "
-                        "соответствия на газоанализатор ПГА-7, заводской номер А-2241."
-                    ),
-                    "ai_response": (
-                        "Уважаемая Светлана Юрьевна!\n\n"
-                        "Паспорт и сертификат будут направлены на вашу почту в течение 1 рабочего дня.\n\n"
-                        "С уважением, Служба технической поддержки ЭРИС"
-                    ),
-                    "status": "В работе",
-                },
-                {
-                    "id": 3,
-                    "created_at": "2026-02-26T08:05:00",
-                    "full_name": "Смирнов Алексей Петрович",
-                    "facility": "АО «НефтеХим», г. Нижнекамск",
-                    "phone": "+7 (855) 555-00-11",
-                    "email": "smirnov@neftekhim.ru",
-                    "device_numbers": "НК-001, НК-002, НК-003",
-                    "device_type": "Стационарный датчик СД-4М",
-                    "emotional_tone": "Позитив",
-                    "category": "Калибровка",
-                    "issue_summary": "Уточнение периодичности калибровки датчиков СД-4М",
-                    "original_text": (
-                        "Добрый день! Хотим поблагодарить вашу команду за оперативную помощь. "
-                        "Подскажите рекомендуемую периодичность калибровки для СД-4М. "
-                        "Заводские номера: НК-001, НК-002, НК-003."
-                    ),
-                    "ai_response": (
-                        "Уважаемый Алексей Петрович!\n\n"
-                        "Для СД-4М рекомендуемая калибровка — каждые 6 месяцев (ГОСТ Р 52931). "
-                        "При наличии агрессивных сред сократите до 3 месяцев.\n\n"
-                        "С уважением, Служба технической поддержки ЭРИС"
-                    ),
-                    "status": "Закрыто",
-                },
-            ]
-            self._recalc_next_id()
-            self._save()
+def _to_dict(t: Ticket) -> dict[str, Any]:
+    return {
+        "id": t.id,
+        "created_at": t.created_at.isoformat(),
+        "full_name": t.full_name,
+        "facility": t.facility,
+        "phone": t.phone,
+        "email": t.email,
+        "device_numbers": t.device_numbers,
+        "device_type": t.device_type,
+        "emotional_tone": t.emotional_tone,
+        "category": t.category,
+        "issue_summary": t.issue_summary,
+        "original_text": t.original_text,
+        "ai_response": t.ai_response,
+        "status": t.status,
+    }
 
-    def _recalc_next_id(self) -> None:
-        max_id = max((t.get("id", 0) for t in self._tickets), default=0)
-        self._next_id = int(max_id) + 1
 
-    def _load(self) -> None:
-        data = json.loads(self._path.read_text(encoding="utf-8"))
-        self._tickets = list(data.get("tickets", []))
-        self._recalc_next_id()
+class DbTicketStore:
+    def get_all(self, status=None, tone=None, category=None, search=None) -> list[dict[str, Any]]:
+        with SessionLocal() as db:
+            stmt = select(Ticket)
 
-    def _save(self) -> None:
-        tmp = self._path.with_suffix(self._path.suffix + ".tmp")
-        payload = {"tickets": self._tickets}
-        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp.replace(self._path)
+            if status:
+                stmt = stmt.where(Ticket.status == status)
+            if tone:
+                stmt = stmt.where(Ticket.emotional_tone == tone)
+            if category:
+                stmt = stmt.where(Ticket.category == category)
 
-    def get_all(
-        self,
-        status: Optional[str] = None,
-        tone: Optional[str] = None,
-        category: Optional[str] = None,
-        search: Optional[str] = None,
-    ) -> list[dict[str, Any]]:
-        result = self._tickets.copy()
+            if search:
+                s = f"%{search}%"
+                stmt = stmt.where(
+                    or_(
+                        Ticket.full_name.ilike(s),
+                        Ticket.facility.ilike(s),
+                        Ticket.phone.ilike(s),
+                        Ticket.email.ilike(s),
+                        Ticket.device_numbers.ilike(s),
+                        Ticket.device_type.ilike(s),
+                        Ticket.issue_summary.ilike(s),
+                        Ticket.original_text.ilike(s),
+                    )
+                )
 
-        if status:
-            result = [t for t in result if t.get("status") == status]
-        if tone:
-            result = [t for t in result if t.get("emotional_tone") == tone]
-        if category:
-            result = [t for t in result if t.get("category") == category]
-        if search:
-            s = search.lower()
-            result = [
-                t for t in result
-                if s in t.get("full_name", "").lower()
-                or s in t.get("facility", "").lower()
-                or s in t.get("issue_summary", "").lower()
-                or s in t.get("device_numbers", "").lower()
-            ]
+            stmt = stmt.order_by(desc(Ticket.created_at), desc(Ticket.id))
+            rows = db.execute(stmt).scalars().all()
+            return [_to_dict(r) for r in rows]
 
-        return result
+    def get_by_id(self, ticket_id: int) -> dict[str, Any] | None:
+        with SessionLocal() as db:
+            row = db.get(Ticket, ticket_id)
+            return _to_dict(row) if row else None
 
-    def get_by_id(self, ticket_id: int) -> Optional[dict[str, Any]]:
-        return next((t for t in self._tickets if t.get("id") == ticket_id), None)
+    def add(self, payload: dict[str, Any]) -> dict[str, Any]:
+        with SessionLocal() as db:
+            t = Ticket(
+                created_at=payload.get("created_at") or datetime.now(timezone.utc).replace(tzinfo=None),
+                full_name=payload.get("full_name"),
+                facility=payload.get("facility"),
+                phone=payload.get("phone"),
+                email=payload.get("email"),
+                device_numbers=payload.get("device_numbers"),
+                device_type=payload.get("device_type"),
+                emotional_tone=payload.get("emotional_tone"),
+                category=payload.get("category") or "Общий вопрос",
+                issue_summary=payload.get("issue_summary"),
+                original_text=payload.get("original_text"),
+                ai_response=payload.get("ai_response"),
+                status=payload.get("status") or "Новое",
+            )
+            db.add(t)
+            db.commit()
+            db.refresh(t)
+            return _to_dict(t)
 
-    def add(self, ticket_data: dict[str, Any]) -> dict[str, Any]:
-        ticket_data = dict(ticket_data)
-        ticket_data["id"] = self._next_id
-        ticket_data["created_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-        self._tickets.append(ticket_data)
-        self._next_id += 1
-        self._save()
-        return ticket_data
+    def update(self, ticket_id: int, patch: dict[str, Any]) -> dict[str, Any] | None:
+        with SessionLocal() as db:
+            t = db.get(Ticket, ticket_id)
+            if not t:
+                return None
 
-    def update(self, ticket_id: int, fields: dict[str, Any]) -> Optional[dict[str, Any]]:
-        ticket = self.get_by_id(ticket_id)
-        if ticket is None:
-            return None
+            for k, v in patch.items():
+                if v is None:
+                    continue
+                if hasattr(t, k):
+                    setattr(t, k, v)
 
-        ticket.update({k: v for k, v in fields.items() if v is not None})
-        self._save()
-        return ticket
+            db.add(t)
+            db.commit()
+            db.refresh(t)
+            return _to_dict(t)
+
+    def delete(self, ticket_id: int) -> bool:
+        with SessionLocal() as db:
+            t = db.get(Ticket, ticket_id)
+            if not t:
+                return False
+            db.delete(t)
+            db.commit()
+            return True
 
     def stats(self) -> dict[str, Any]:
-        by_tone: dict[str, int] = {}
-        by_category: dict[str, int] = {}
-        by_status: dict[str, int] = {}
+        with SessionLocal() as db:
+            total = db.execute(select(func.count()).select_from(Ticket)).scalar_one()
 
-        for t in self._tickets:
-            tone = t.get("emotional_tone", "Нейтрально")
-            cat = t.get("category", "Другое")
-            status = t.get("status", "Новое")
-            by_tone[tone] = by_tone.get(tone, 0) + 1
-            by_category[cat] = by_category.get(cat, 0) + 1
-            by_status[status] = by_status.get(status, 0) + 1
+            by_tone_rows = db.execute(select(Ticket.emotional_tone, func.count()).group_by(Ticket.emotional_tone)).all()
+            by_cat_rows = db.execute(select(Ticket.category, func.count()).group_by(Ticket.category)).all()
+            by_status_rows = db.execute(select(Ticket.status, func.count()).group_by(Ticket.status)).all()
 
-        return {
-            "total": len(self._tickets),
-            "by_tone": by_tone,
-            "by_category": by_category,
-            "by_status": by_status,
-        }
+            return {
+                "total": total,
+                "by_tone": {k or "": v for k, v in by_tone_rows},
+                "by_category": {k or "": v for k, v in by_cat_rows},
+                "by_status": {k or "": v for k, v in by_status_rows},
+            }
 
 
-ticket_store = JsonTicketStore()
+ticket_store = DbTicketStore()

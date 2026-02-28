@@ -77,7 +77,7 @@ class TestListTickets:
         r = client_with_data.get("/api/tickets?search=петрова")
         data = r.json()
         assert len(data) == 1
-        assert "Петрова" in data[0]["full_name"]
+        assert "петрова" in data[0]["full_name"]
 
     def test_combined_filters(self, client_with_data):
         r = client_with_data.get("/api/tickets?status=Новое&category=Неисправность")

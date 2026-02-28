@@ -1,36 +1,37 @@
-import json
-
-import pytest
+from __future__ import annotations
 
 
-@pytest.fixture
-def tmp_ticket_store(tmp_path):
-    from app.core.telegram_ticket_store import JsonTelegramTicketStore
+def test_upsert_get_list_all(ticket_store):
+    from app.core.telegram_ticket_store import DbTelegramTicketStore
 
-    return JsonTelegramTicketStore(path=str(tmp_path / "telegram_tickets_test.json"))
+    # Telegram bindings are FK'ed to tickets, so create tickets first
+    t1 = ticket_store.add({"full_name": "A", "emotional_tone": "Нейтрально", "status": "Новое"})
+    t2 = ticket_store.add({"full_name": "B", "emotional_tone": "Нейтрально", "status": "Новое"})
 
+    ts = DbTelegramTicketStore()
+    ts.upsert_ticket(str(t1["id"]), {"created_at": "2025-01-01T00:00:00Z", "assignee": None})
+    ts.upsert_ticket(str(t2["id"]), {"created_at": "2025-01-02T00:00:00Z", "assignee": "@a"})
 
-def test_upsert_get_list_all(tmp_ticket_store):
-    tmp_ticket_store.upsert_ticket("t1", {"created_at": "2025-01-01T00:00:00Z", "assignee": None})
-    tmp_ticket_store.upsert_ticket("t2", {"created_at": "2025-01-02T00:00:00Z", "assignee": "@a"})
+    assert ts.get(str(t1["id"]))["ticket_id"] == str(t1["id"])
+    assert ts.get(str(t2["id"]))["assignee"] == "@a"
 
-    assert tmp_ticket_store.get("t1")["ticket_id"] == "t1"
-    assert tmp_ticket_store.get("t2")["assignee"] == "@a"
-
-    all_t = {t["ticket_id"] for t in tmp_ticket_store.list_all()}
-    assert all_t == {"t1", "t2"}
-
-    raw = json.loads(tmp_ticket_store._path.read_text(encoding="utf-8"))
-    assert "tickets" in raw and "t1" in raw["tickets"]
+    all_t = {t["ticket_id"] for t in ts.list_all()}
+    assert all_t == {str(t1["id"]), str(t2["id"])}
 
 
-def test_add_event_appends_and_is_noop_for_missing_ticket(tmp_ticket_store):
-    tmp_ticket_store.add_event("missing", {"ts": "x", "type": "created", "by": None})
-    assert tmp_ticket_store.get("missing") is None
+def test_add_event_orders_and_missing_ticket_is_isolated(ticket_store):
+    from app.core.telegram_ticket_store import DbTelegramTicketStore
 
-    tmp_ticket_store.upsert_ticket("t1", {"events": []})
-    tmp_ticket_store.add_event("t1", {"ts": "2025-01-01", "type": "created", "by": None})
-    tmp_ticket_store.add_event("t1", {"ts": "2025-01-01", "type": "taken", "by": "@u"})
+    t1 = ticket_store.add({"full_name": "A", "emotional_tone": "Нейтрально", "status": "Новое"})
+    ts = DbTelegramTicketStore()
+    ts.upsert_ticket(str(t1["id"]), {"created_at": "2025-01-01", "assignee": None})
 
-    t = tmp_ticket_store.get("t1")
+    # Events should be ordered by ts
+    ts.add_event(str(t1["id"]), {"ts": "2025-01-02T00:00:00Z", "type": "taken", "by": "@u"})
+    ts.add_event(str(t1["id"]), {"ts": "2025-01-01T00:00:00Z", "type": "created", "by": None})
+
+    t = ts.get(str(t1["id"]))
     assert [e["type"] for e in t["events"]] == ["created", "taken"]
+
+    # Missing ticket id should not appear (no implicit create)
+    assert ts.get("99999") is None
