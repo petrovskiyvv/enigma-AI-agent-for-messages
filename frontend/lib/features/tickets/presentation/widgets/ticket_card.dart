@@ -4,7 +4,6 @@ import '../../../../core/widgets/status_badge.dart';
 import '../../domain/ticket.dart';
 import '../ticket_colors.dart';
 
-// Мобильное представление тикета — карточка вместо строки таблицы
 class TicketCard extends StatelessWidget {
   const TicketCard({super.key, required this.ticket, required this.onTap});
 
