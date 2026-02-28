@@ -42,7 +42,7 @@ class _StatsScreenState extends State<StatsScreen> {
         children: [
           _section(context, 'Тональность', Map<String, int>.from(_stats!['by_tone'] ?? {}), {
             'Негатив': colors.negative,
-            'Нейтральноно': colors.neutral,
+            'Нейтрально': colors.neutral,
             'Позитив': colors.positive,
           }),
           const SizedBox(height: 32),

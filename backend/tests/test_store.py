@@ -162,7 +162,7 @@ class TestStats:
     def test_by_tone_counts(self, store_with_data):
         s = store_with_data.stats()
         assert s["by_tone"]["Негатив"] == 1
-        assert s["by_tone"]["Нейтральноно"] == 1
+        assert s["by_tone"]["Нейтрально"] == 1
         assert s["by_tone"]["Позитив"] == 1
 
     def test_by_category_counts(self, store_with_data):

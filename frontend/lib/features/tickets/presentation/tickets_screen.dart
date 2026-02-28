@@ -78,7 +78,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
     final toneDropdown = FilterDropdown(
       hint: 'Тональность',
-      items: const ['Негатив', 'Нейтральноно', 'Позитив'],
+      items: const ['Негатив', 'Нейтрально', 'Позитив'],
       value: _filterTone,
       onChanged: (v) { setState(() => _filterTone = v); _load(); },
     );
