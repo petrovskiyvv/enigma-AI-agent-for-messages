@@ -54,23 +54,25 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(flex: 5, child: _buildInput()),
-        Container(width: 1, color: AppColors.border),
-        Expanded(flex: 5, child: _buildOutput()),
+        Expanded(flex: 5, child: _buildInput(context)),
+        Container(width: 1, color: colors.border),
+        Expanded(flex: 5, child: _buildOutput(context)),
       ],
     );
   }
 
-  Widget _buildInput() {
+  Widget _buildInput(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Текст письма', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text('Текст письма', style: TextStyle(color: colors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
           Expanded(
             child: TextField(
@@ -78,16 +80,16 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               maxLines: null,
               expands: true,
               textAlignVertical: TextAlignVertical.top,
-              style: const TextStyle(color: AppColors.text, fontSize: 13, height: 1.7),
+              style: TextStyle(color: colors.text, fontSize: 13, height: 1.7),
               decoration: InputDecoration(
                 hintText: 'Вставьте текст письма...',
-                hintStyle: const TextStyle(color: AppColors.textSecondary),
+                hintStyle: TextStyle(color: colors.textSecondary),
                 filled: true,
-                fillColor: AppColors.card,
+                fillColor: colors.card,
                 contentPadding: const EdgeInsets.all(16),
-                border: _border(AppColors.border),
-                enabledBorder: _border(AppColors.border),
-                focusedBorder: _border(AppColors.accent),
+                border:        _border(colors.border),
+                enabledBorder: _border(colors.border),
+                focusedBorder: _border(colors.accent),
               ),
             ),
           ),
@@ -97,12 +99,12 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             child: ElevatedButton.icon(
               onPressed: _loading ? null : _analyze,
               icon: _loading
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg))
+                  ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: colors.bg))
                   : const Icon(Icons.auto_awesome_rounded, size: 16),
               label: Text(_loading ? 'Анализирую...' : 'Анализировать письмо'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: AppColors.bg,
+                backgroundColor: colors.accent,
+                foregroundColor: colors.bg,
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
@@ -112,66 +114,66 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     );
   }
 
-  Widget _buildOutput() {
+  Widget _buildOutput(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.all(24),
       child: _error != null
-          ? Text(_error!, style: const TextStyle(color: AppColors.negative))
+          ? Text(_error!, style: TextStyle(color: colors.negative))
           : _result == null
-              ? const Center(
-                  child: Text('Результат появится здесь', style: TextStyle(color: AppColors.textSecondary)),
-                )
-              : _buildResult(_result!),
+              ? Center(child: Text('Результат появится здесь', style: TextStyle(color: colors.textSecondary)))
+              : _buildResult(context, _result!),
     );
   }
 
-  Widget _buildResult(Ticket t) {
+  Widget _buildResult(BuildContext context, Ticket t) {
+    final colors = context.colors;
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            const Icon(Icons.check_circle, color: AppColors.accent, size: 18),
+            Icon(Icons.check_circle, color: colors.accent, size: 18),
             const SizedBox(width: 8),
-            const Text('Тикет создан!', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold)),
+            Text('Тикет создан!', style: TextStyle(color: colors.accent, fontWeight: FontWeight.bold)),
             const SizedBox(width: 8),
-            Text('#${t.id}', style: const TextStyle(color: AppColors.textSecondary)),
+            Text('#${t.id}', style: TextStyle(color: colors.textSecondary)),
           ]),
           const SizedBox(height: 20),
-          _card('Извлечённые данные', [
-            if (t.fullName.isNotEmpty) _row('ФИО', t.fullName),
-            if (t.email.isNotEmpty) _row('Email', t.email),
-            if (t.phone.isNotEmpty) _row('Телефон', t.phone),
-            if (t.deviceNumbers.isNotEmpty) _row('Приборы', t.deviceNumbers),
-            _row('Суть', t.issueSummary.isEmpty ? '—' : t.issueSummary),
+          _card(context, 'Извлечённые данные', [
+            if (t.fullName.isNotEmpty)      _row(context, 'ФИО',      t.fullName),
+            if (t.email.isNotEmpty)         _row(context, 'Email',    t.email),
+            if (t.phone.isNotEmpty)         _row(context, 'Телефон',  t.phone),
+            if (t.deviceNumbers.isNotEmpty) _row(context, 'Приборы',  t.deviceNumbers),
+            _row(context, 'Суть', t.issueSummary.isEmpty ? '—' : t.issueSummary),
           ]),
           const SizedBox(height: 16),
-          _card('AI-классификация', [
+          _card(context, 'AI-классификация', [
             Row(children: [
-              const Text('Тональность:', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              Text('Тональность:', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
               const SizedBox(width: 10),
-              StatusBadge(text: t.emotionalTone, color: toneColor(t.emotionalTone)),
+              StatusBadge(text: t.emotionalTone, color: toneColor(context, t.emotionalTone)),
             ]),
             const SizedBox(height: 8),
             Row(children: [
-              const Text('Категория:', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              Text('Категория:', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
               const SizedBox(width: 10),
-              StatusBadge(text: t.category, color: AppColors.accent),
+              StatusBadge(text: t.category, color: colors.accent),
             ]),
           ]),
           if (t.aiResponse.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text('Черновик ответа', style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+            Text('Черновик ответа', style: TextStyle(color: colors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.card,
+                color: colors.card,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: colors.border),
               ),
-              child: SelectableText(t.aiResponse, style: const TextStyle(color: AppColors.text, fontSize: 13, height: 1.7)),
+              child: SelectableText(t.aiResponse, style: TextStyle(color: colors.text, fontSize: 13, height: 1.7)),
             ),
           ],
         ],
@@ -179,19 +181,20 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     );
   }
 
-  Widget _card(String title, List<Widget> children) {
+  Widget _card(BuildContext context, String title, List<Widget> children) {
+    final colors = context.colors;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: colors.card,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+          Text(title, style: TextStyle(color: colors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
           const SizedBox(height: 12),
           ...children,
         ],
@@ -199,14 +202,15 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     );
   }
 
-  Widget _row(String label, String value) {
+  Widget _row(BuildContext context, String label, String value) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 80, child: Text('$label:', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12))),
-          Expanded(child: Text(value, style: const TextStyle(color: AppColors.text, fontSize: 13))),
+          SizedBox(width: 80, child: Text('$label:', style: TextStyle(color: colors.textSecondary, fontSize: 12))),
+          Expanded(child: Text(value, style: TextStyle(color: colors.text, fontSize: 13))),
         ],
       ),
     );

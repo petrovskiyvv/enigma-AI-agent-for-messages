@@ -36,9 +36,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final tickets = await ticketRepository.fetchAll(
-        tone: _filterTone,
-        status: _filterStatus,
-        search: _search,
+        tone: _filterTone, status: _filterStatus, search: _search,
       );
       setState(() => _tickets = tickets);
     } catch (e) {
@@ -53,10 +51,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
       context: context,
       builder: (_) => TicketDialog(
         ticket: ticket,
-        onSaved: () {
-          _load();
-          widget.onStatsChanged();
-        },
+        onSaved: () { _load(); widget.onStatsChanged(); },
       ),
     );
   }
@@ -65,16 +60,17 @@ class _TicketsScreenState extends State<TicketsScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildFilters(),
-        Expanded(child: _buildBody()),
+        _buildFilters(context),
+        Expanded(child: _buildBody(context)),
       ],
     );
   }
 
-  Widget _buildFilters() {
+  Widget _buildFilters(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      color: AppColors.surface,
+      color: colors.surface,
       child: Row(
         children: [
           Expanded(
@@ -104,7 +100,7 @@ class _TicketsScreenState extends State<TicketsScreen> {
                 setState(() { _filterTone = null; _filterStatus = null; });
                 _load();
               },
-              child: const Text('Сбросить', style: TextStyle(color: AppColors.accent, fontSize: 12)),
+              child: Text('Сбросить', style: TextStyle(color: colors.accent, fontSize: 12)),
             ),
           ],
         ],
@@ -112,15 +108,13 @@ class _TicketsScreenState extends State<TicketsScreen> {
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.accent));
-    if (_error != null) return Center(child: Text(_error!, style: const TextStyle(color: AppColors.negative)));
+  Widget _buildBody(BuildContext context) {
+    final colors = context.colors;
+    if (_loading) return Center(child: CircularProgressIndicator(color: colors.accent));
+    if (_error != null) return Center(child: Text(_error!, style: TextStyle(color: colors.negative)));
     if (_tickets.isEmpty) {
-      return const Center(
-        child: Text('Нет обращений', style: TextStyle(color: AppColors.textSecondary)),
-      );
+      return Center(child: Text('Нет обращений', style: TextStyle(color: colors.textSecondary)));
     }
-
     return SingleChildScrollView(
       child: Column(
         children: [
