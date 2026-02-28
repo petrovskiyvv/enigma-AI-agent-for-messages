@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from app.core.db import SessionLocal
 from app.core.models import TelegramChannel, TelegramLinkToken
