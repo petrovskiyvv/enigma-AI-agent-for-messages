@@ -3,6 +3,7 @@ from typing import Optional
 
 from app.schemas.ticket import TicketCreate, TicketUpdate
 from app.services.ticket_service import TicketService
+from app.services.telegram_notifier import notify_new_ticket
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 service = TicketService()
@@ -28,7 +29,9 @@ async def get_ticket(ticket_id: int):
 
 @router.post("", status_code=201)
 async def create_ticket(data: TicketCreate):
-    return service.create(data)
+    ticket = service.create(data)
+    await notify_new_ticket(ticket)
+    return ticket
 
 
 @router.patch("/{ticket_id}")
