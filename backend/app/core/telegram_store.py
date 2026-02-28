@@ -45,7 +45,10 @@ class DbTelegramChannelStore:
                 return False
             if row.consumed_at is not None:
                 return False
-            if row.expires_at <= now:
+            expires = row.expires_at
+            if getattr(expires, "tzinfo", None) is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+            if expires <= now:
                 return False
             row.consumed_at = now
             db.add(row)
