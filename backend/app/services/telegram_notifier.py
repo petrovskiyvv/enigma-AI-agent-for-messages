@@ -1,11 +1,12 @@
 import httpx
 
 from app.core.config import settings
-from app.core.telegram_store import JsonTelegramChannelStore
-from app.core.telegram_ticket_store import JsonTelegramTicketStore
+from app.core.telegram_store import telegram_store
+from app.core.telegram_ticket_store import telegram_ticket_store
+import logging
 
-telegram_store = JsonTelegramChannelStore()
-ticket_store = JsonTelegramTicketStore()
+logger = logging.getLogger(__name__)
+
 
 
 def _format_ticket_base(ticket: dict) -> str:
@@ -96,7 +97,7 @@ async def notify_new_ticket(ticket: dict) -> None:
                 discussion_root_message_id = None
                 timeline_message_id = None
 
-                ticket_store.upsert_ticket(
+                telegram_ticket_store.upsert_ticket(
                     ticket_id=ticket_id,
                     payload={
                         "created_at": ticket.get("created_at"),
@@ -110,7 +111,7 @@ async def notify_new_ticket(ticket: dict) -> None:
                         "events": [],
                     },
                 )
-                ticket_store.add_event(ticket_id, {"ts": ticket.get("created_at"), "type": "created", "by": None})
+                telegram_ticket_store.add_event(ticket_id, {"ts": ticket.get("created_at"), "type": "created", "by": None})
 
             except Exception:
-                pass
+                logger.exception("Unexpected error")
