@@ -31,58 +31,62 @@ class _StatsScreenState extends State<StatsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.accent));
-    if (_stats == null) return const Center(child: Text('Нет данных', style: TextStyle(color: AppColors.textSecondary)));
+    final colors = context.colors;
+    if (_loading) return Center(child: CircularProgressIndicator(color: colors.accent));
+    if (_stats == null) return Center(child: Text('Нет данных', style: TextStyle(color: colors.textSecondary)));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _section('Тональность', Map<String, int>.from(_stats!['by_tone'] ?? {}), {
-            'Негатив': AppColors.negative,
-            'Нейтраль': AppColors.neutral,
-            'Позитив': AppColors.positive,
+          _section(context, 'Тональность', Map<String, int>.from(_stats!['by_tone'] ?? {}), {
+            'Негатив': colors.negative,
+            'Нейтраль': colors.neutral,
+            'Позитив': colors.positive,
           }),
           const SizedBox(height: 32),
-          _section('Категории', Map<String, int>.from(_stats!['by_category'] ?? {}), {}),
+          _section(context, 'Категории', Map<String, int>.from(_stats!['by_category'] ?? {}), {}),
           const SizedBox(height: 32),
-          _section('Статусы', Map<String, int>.from(_stats!['by_status'] ?? {}), {
-            'Новое': AppColors.statusNew,
-            'В работе': AppColors.neutral,
-            'Закрыто': AppColors.accent,
+          _section(context, 'Статусы', Map<String, int>.from(_stats!['by_status'] ?? {}), {
+            'Новое':    colors.statusNew,
+            'В работе': colors.neutral,
+            'Закрыто':  colors.accent,
           }),
         ],
       ),
     );
   }
 
-  Widget _section(String title, Map<String, int> data, Map<String, Color> colorMap) {
+  Widget _section(BuildContext context, String title, Map<String, int> data, Map<String, Color> colorMap) {
+    final colors = context.colors;
+    final maxVal = data.values.fold(0, (a, b) => a > b ? a : b);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.bold)),
+        Text(title, style: TextStyle(color: colors.text, fontSize: 15, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         if (data.isEmpty)
-          const Text('Нет данных', style: TextStyle(color: AppColors.textSecondary))
+          Text('Нет данных', style: TextStyle(color: colors.textSecondary))
         else
-          ...data.entries.map((e) => _bar(e.key, e.value, data.values.fold(0, (a, b) => a > b ? a : b), colorMap[e.key] ?? AppColors.accent)),
+          ...data.entries.map((e) => _bar(context, e.key, e.value, maxVal, colorMap[e.key] ?? colors.accent)),
       ],
     );
   }
 
-  Widget _bar(String label, int value, int maxValue, Color color) {
+  Widget _bar(BuildContext context, String label, int value, int maxValue, Color color) {
+    final colors  = context.colors;
     final fraction = maxValue > 0 ? value / maxValue : 0.0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          SizedBox(width: 140, child: Text(label, style: const TextStyle(color: AppColors.text, fontSize: 13))),
+          SizedBox(width: 140, child: Text(label, style: TextStyle(color: colors.text, fontSize: 13))),
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: Stack(children: [
-                Container(height: 28, color: AppColors.card),
+                Container(height: 28, color: colors.card),
                 FractionallySizedBox(
                   widthFactor: fraction,
                   child: Container(height: 28, color: color.withOpacity(0.7)),
