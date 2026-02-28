@@ -43,3 +43,21 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Flutter generated
+**/generated_plugin_registrant.cc
+**/generated_plugins.cmake
+**/GeneratedPluginRegistrant.swift
+**/GeneratedPluginRegistrant.m
+
+# Xcode
+**/Flutter-Debug.xcconfig
+**/Flutter-Release.xcconfig
+**/Debug.xcconfig
+**/Release.xcconfig
+**/contents.xcworkspacedata
+**/project.pbxproj
+
+# Pub
+pubspec.lock
+build/
