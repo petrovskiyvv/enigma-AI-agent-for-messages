@@ -20,3 +20,10 @@ services:
       - db
     environment:
       DATABASE_URL: postgresql://admin:password@db:5432/enigma_db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
