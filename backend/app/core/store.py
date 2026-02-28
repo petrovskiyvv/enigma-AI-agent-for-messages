@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 from typing import Optional, Any
@@ -142,7 +142,7 @@ class JsonTicketStore:
     def add(self, ticket_data: dict[str, Any]) -> dict[str, Any]:
         ticket_data = dict(ticket_data)
         ticket_data["id"] = self._next_id
-        ticket_data["created_at"] = datetime.datetime.now().isoformat()
+        ticket_data["created_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
         self._tickets.append(ticket_data)
         self._next_id += 1
         self._save()
