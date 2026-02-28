@@ -107,6 +107,8 @@ class _DesktopHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors   = context.colors;
     final appState = EnigmaApp.of(context);
+    final width    = MediaQuery.of(context).size.width;
+    final showSubtitle = width > 800;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -117,14 +119,13 @@ class _DesktopHeader extends StatelessWidget {
       child: Row(
         children: [
           _Logo(),
-          const SizedBox(width: 14),
-          Flexible(
-            child: Text(
+          if (showSubtitle) ...[
+            const SizedBox(width: 14),
+            Text(
               'Система технической поддержки',
               style: TextStyle(color: colors.textSecondary, fontSize: 13),
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
+          ],
           const Spacer(),
           if (stats != null) ...[
             _StatBadge(
