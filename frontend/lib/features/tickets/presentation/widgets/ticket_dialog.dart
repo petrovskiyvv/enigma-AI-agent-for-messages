@@ -52,36 +52,41 @@ class _TicketDialogState extends State<TicketDialog> {
     final isMobile = screenWidth < 600;
     return Dialog(
       backgroundColor: colors.surface,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: colors.border),
       ),
-      child: SizedBox(
-        width: isMobile ? screenWidth * 0.95 : 860,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildHeader(context, t),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildMetaGrid(context, t),
-                    if (t.originalText.isNotEmpty) ...[
+      child: MediaQuery.removeViewInsets(
+        removeBottom: true,
+        context: context,
+        child: SizedBox(
+          width: isMobile ? screenWidth * 0.95 : 860,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildHeader(context, t),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMetaGrid(context, t),
+                      if (t.originalText.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        _buildOriginalText(context, t.originalText),
+                      ],
                       const SizedBox(height: 20),
-                      _buildOriginalText(context, t.originalText),
+                      _buildResponseEditor(context),
+                      const SizedBox(height: 20),
+                      _buildFooter(context),
                     ],
-                    const SizedBox(height: 20),
-                    _buildResponseEditor(context),
-                    const SizedBox(height: 20),
-                    _buildFooter(context),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -100,25 +105,22 @@ class _TicketDialogState extends State<TicketDialog> {
         border: Border(bottom: BorderSide(color: colors.border)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   'Обращение #${t.id}',
                   style: TextStyle(color: colors.text, fontWeight: FontWeight.bold, fontSize: 15),
                 ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    StatusBadge(text: t.emotionalTone, color: toneColor(context, t.emotionalTone)),
-                    StatusBadge(text: t.category, color: colors.accent),
-                  ],
-                ),
+                const SizedBox(width: 8),
+                StatusBadge(text: t.emotionalTone, color: toneColor(context, t.emotionalTone)),
+                const SizedBox(width: 6),
+                StatusBadge(text: t.category, color: colors.accent),
+                const SizedBox(width: 6),
+                StatusBadge(text: t.status, color: statusColor(context, t.status)),
               ],
             ),
           ),
