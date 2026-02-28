@@ -48,6 +48,8 @@ class _TicketDialogState extends State<TicketDialog> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final t = widget.ticket;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
     return Dialog(
       backgroundColor: colors.surface,
       shape: RoundedRectangleBorder(
@@ -55,7 +57,7 @@ class _TicketDialogState extends State<TicketDialog> {
         side: BorderSide(color: colors.border),
       ),
       child: SizedBox(
-        width: 860,
+        width: isMobile ? screenWidth * 0.95 : 860,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -88,7 +90,7 @@ class _TicketDialogState extends State<TicketDialog> {
   Widget _buildHeader(BuildContext context, Ticket t) {
     final colors = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: colors.card,
         borderRadius: const BorderRadius.only(
@@ -98,16 +100,28 @@ class _TicketDialogState extends State<TicketDialog> {
         border: Border(bottom: BorderSide(color: colors.border)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Обращение #${t.id}',
-            style: TextStyle(color: colors.text, fontWeight: FontWeight.bold, fontSize: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Обращение #${t.id}',
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    StatusBadge(text: t.emotionalTone, color: toneColor(context, t.emotionalTone)),
+                    StatusBadge(text: t.category, color: colors.accent),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 16),
-          StatusBadge(text: t.emotionalTone, color: toneColor(context, t.emotionalTone)),
-          const SizedBox(width: 8),
-          StatusBadge(text: t.category, color: colors.accent),
-          const Spacer(),
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
             icon: Icon(Icons.close, color: colors.textSecondary),
@@ -131,7 +145,7 @@ class _TicketDialogState extends State<TicketDialog> {
       spacing: 16,
       runSpacing: 12,
       children: fields.map((f) => SizedBox(
-        width: 240,
+        width: 200,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -193,48 +207,59 @@ class _TicketDialogState extends State<TicketDialog> {
 
   Widget _buildFooter(BuildContext context) {
     final colors = context.colors;
-    return Row(
+    final saveButton = ElevatedButton.icon(
+      onPressed: _saving ? null : _save,
+      icon: _saving
+          ? SizedBox(
+        width: 14, height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2, color: colors.bg),
+      )
+          : const Icon(Icons.save_rounded, size: 16),
+      label: const Text('Сохранить'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: colors.accent,
+        foregroundColor: colors.bg,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Статус:', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
-        const SizedBox(width: 12),
-        DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _status,
-            dropdownColor: colors.card,
-            style: TextStyle(color: colors.text, fontSize: 13),
-            items: ['Новое', 'В работе', 'Закрыто']
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                .toList(),
-            onChanged: (v) => setState(() => _status = v!),
-          ),
+        Row(
+          children: [
+            Text('Статус:', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+            const SizedBox(width: 12),
+            DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _status,
+                dropdownColor: colors.card,
+                style: TextStyle(color: colors.text, fontSize: 13),
+                items: ['Новое', 'В работе', 'Закрыто']
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
+                onChanged: (v) => setState(() => _status = v!),
+              ),
+            ),
+          ],
         ),
-        const Spacer(),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Отмена', style: TextStyle(color: colors.textSecondary)),
-        ),
-        const SizedBox(width: 10),
-        ElevatedButton.icon(
-          onPressed: _saving ? null : _save,
-          icon: _saving
-              ? SizedBox(
-                  width: 14, height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: colors.bg),
-                )
-              : const Icon(Icons.save_rounded, size: 16),
-          label: const Text('Сохранить'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: colors.accent,
-            foregroundColor: colors.bg,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Отмена', style: TextStyle(color: colors.textSecondary)),
+            ),
+            const SizedBox(width: 10),
+            saveButton,
+          ],
         ),
       ],
     );
   }
 
   OutlineInputBorder _border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: color),
-      );
+    borderRadius: BorderRadius.circular(8),
+    borderSide: BorderSide(color: color),
+  );
 }
