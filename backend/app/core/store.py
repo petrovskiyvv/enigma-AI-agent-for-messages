@@ -1,88 +1,113 @@
 import datetime
-from typing import Optional
+import json
+from pathlib import Path
+from typing import Optional, Any
 
 
-class TicketStore:
-    def __init__(self):
-        self._tickets: list[dict] = [
-            {
-                "id": 1,
-                "created_at": "2026-02-25T09:14:00",
-                "full_name": "Иванов Иван Иванович",
-                "facility": "Завод №1, г. Казань",
-                "phone": "+7 (999) 123-45-67",
-                "email": "ivanov@zavod1.ru",
-                "device_numbers": "12345, 67890",
-                "device_type": "Газоанализатор ГС-812",
-                "emotional_tone": "Негатив",
-                "category": "Неисправность",
-                "issue_summary": "Прибор не включается после плановой калибровки",
-                "original_text": (
-                    "Добрый день! Обращаюсь по поводу газоанализатора ГС-812 "
-                    "(зав. №12345, 67890). После проведения плановой калибровки "
-                    "прибор перестал включаться. Индикатор питания мигает красным. "
-                    "Прошу срочно помочь, остановка производства несёт значительные убытки."
-                ),
-                "ai_response": (
-                    "Уважаемый Иван Иванович!\n\n"
-                    "По описанным симптомам рекомендуем:\n"
-                    "1. Отключите прибор от сети на 30 секунд.\n"
-                    "2. Проверьте давление калибровочного газа (0.5–1.5 бар).\n"
-                    "3. Удерживайте кнопку MENU 10 секунд для сброса настроек.\n\n"
-                    "С уважением, Служба технической поддержки ЭРИС"
-                ),
-                "status": "Новое",
-            },
-            {
-                "id": 2,
-                "created_at": "2026-02-25T11:30:00",
-                "full_name": "Петрова Светлана Юрьевна",
-                "facility": "ООО «ГазСнаб», г. Уфа",
-                "phone": "+7 (347) 200-10-20",
-                "email": "petrova@gazsnab.ru",
-                "device_numbers": "А-2241",
-                "device_type": "Газоанализатор ПГА-7",
-                "emotional_tone": "Нейтраль",
-                "category": "Документация",
-                "issue_summary": "Запрос актуального паспорта на прибор ПГА-7",
-                "original_text": (
-                    "Здравствуйте. Просим предоставить актуальный паспорт и сертификат "
-                    "соответствия на газоанализатор ПГА-7, заводской номер А-2241."
-                ),
-                "ai_response": (
-                    "Уважаемая Светлана Юрьевна!\n\n"
-                    "Паспорт и сертификат будут направлены на вашу почту в течение 1 рабочего дня.\n\n"
-                    "С уважением, Служба технической поддержки ЭРИС"
-                ),
-                "status": "В работе",
-            },
-            {
-                "id": 3,
-                "created_at": "2026-02-26T08:05:00",
-                "full_name": "Смирнов Алексей Петрович",
-                "facility": "АО «НефтеХим», г. Нижнекамск",
-                "phone": "+7 (855) 555-00-11",
-                "email": "smirnov@neftekhim.ru",
-                "device_numbers": "НК-001, НК-002, НК-003",
-                "device_type": "Стационарный датчик СД-4М",
-                "emotional_tone": "Позитив",
-                "category": "Калибровка",
-                "issue_summary": "Уточнение периодичности калибровки датчиков СД-4М",
-                "original_text": (
-                    "Добрый день! Хотим поблагодарить вашу команду за оперативную помощь. "
-                    "Подскажите рекомендуемую периодичность калибровки для СД-4М. "
-                    "Заводские номера: НК-001, НК-002, НК-003."
-                ),
-                "ai_response": (
-                    "Уважаемый Алексей Петрович!\n\n"
-                    "Для СД-4М рекомендуемая калибровка — каждые 6 месяцев (ГОСТ Р 52931). "
-                    "При наличии агрессивных сред сократите до 3 месяцев.\n\n"
-                    "С уважением, Служба технической поддержки ЭРИС"
-                ),
-                "status": "Закрыто",
-            },
-        ]
-        self._next_id = 4
+class JsonTicketStore:
+    def __init__(self, path: str = "tickets.json"):
+        self._path = Path(path)
+        self._tickets: list[dict[str, Any]] = []
+        self._next_id: int = 1
+        if self._path.exists():
+            self._load()
+        else:
+            # Начальные данные (как в вашем примере)
+            self._tickets = [
+                {
+                    "id": 1,
+                    "created_at": "2026-02-25T09:14:00",
+                    "full_name": "Иванов Иван Иванович",
+                    "facility": "Завод №1, г. Казань",
+                    "phone": "+7 (999) 123-45-67",
+                    "email": "ivanov@zavod1.ru",
+                    "device_numbers": "12345, 67890",
+                    "device_type": "Газоанализатор ГС-812",
+                    "emotional_tone": "Негатив",
+                    "category": "Неисправность",
+                    "issue_summary": "Прибор не включается после плановой калибровки",
+                    "original_text": (
+                        "Добрый день! Обращаюсь по поводу газоанализатора ГС-812 "
+                        "(зав. №12345, 67890). После проведения плановой калибровки "
+                        "прибор перестал включаться. Индикатор питания мигает красным. "
+                        "Прошу срочно помочь, остановка производства несёт значительные убытки."
+                    ),
+                    "ai_response": (
+                        "Уважаемый Иван Иванович!\n\n"
+                        "По описанным симптомам рекомендуем:\n"
+                        "1. Отключите прибор от сети на 30 секунд.\n"
+                        "2. Проверьте давление калибровочного газа (0.5–1.5 бар).\n"
+                        "3. Удерживайте кнопку MENU 10 секунд для сброса настроек.\n\n"
+                        "С уважением, Служба технической поддержки ЭРИС"
+                    ),
+                    "status": "Новое",
+                },
+                {
+                    "id": 2,
+                    "created_at": "2026-02-25T11:30:00",
+                    "full_name": "Петрова Светлана Юрьевна",
+                    "facility": "ООО «ГазСнаб», г. Уфа",
+                    "phone": "+7 (347) 200-10-20",
+                    "email": "petrova@gazsnab.ru",
+                    "device_numbers": "А-2241",
+                    "device_type": "Газоанализатор ПГА-7",
+                    "emotional_tone": "Нейтраль",
+                    "category": "Документация",
+                    "issue_summary": "Запрос актуального паспорта на прибор ПГА-7",
+                    "original_text": (
+                        "Здравствуйте. Просим предоставить актуальный паспорт и сертификат "
+                        "соответствия на газоанализатор ПГА-7, заводской номер А-2241."
+                    ),
+                    "ai_response": (
+                        "Уважаемая Светлана Юрьевна!\n\n"
+                        "Паспорт и сертификат будут направлены на вашу почту в течение 1 рабочего дня.\n\n"
+                        "С уважением, Служба технической поддержки ЭРИС"
+                    ),
+                    "status": "В работе",
+                },
+                {
+                    "id": 3,
+                    "created_at": "2026-02-26T08:05:00",
+                    "full_name": "Смирнов Алексей Петрович",
+                    "facility": "АО «НефтеХим», г. Нижнекамск",
+                    "phone": "+7 (855) 555-00-11",
+                    "email": "smirnov@neftekhim.ru",
+                    "device_numbers": "НК-001, НК-002, НК-003",
+                    "device_type": "Стационарный датчик СД-4М",
+                    "emotional_tone": "Позитив",
+                    "category": "Калибровка",
+                    "issue_summary": "Уточнение периодичности калибровки датчиков СД-4М",
+                    "original_text": (
+                        "Добрый день! Хотим поблагодарить вашу команду за оперативную помощь. "
+                        "Подскажите рекомендуемую периодичность калибровки для СД-4М. "
+                        "Заводские номера: НК-001, НК-002, НК-003."
+                    ),
+                    "ai_response": (
+                        "Уважаемый Алексей Петрович!\n\n"
+                        "Для СД-4М рекомендуемая калибровка — каждые 6 месяцев (ГОСТ Р 52931). "
+                        "При наличии агрессивных сред сократите до 3 месяцев.\n\n"
+                        "С уважением, Служба технической поддержки ЭРИС"
+                    ),
+                    "status": "Закрыто",
+                },
+            ]
+            self._recalc_next_id()
+            self._save()
+
+    def _recalc_next_id(self) -> None:
+        max_id = max((t.get("id", 0) for t in self._tickets), default=0)
+        self._next_id = int(max_id) + 1
+
+    def _load(self) -> None:
+        data = json.loads(self._path.read_text(encoding="utf-8"))
+        self._tickets = list(data.get("tickets", []))
+        self._recalc_next_id()
+
+    def _save(self) -> None:
+        tmp = self._path.with_suffix(self._path.suffix + ".tmp")
+        payload = {"tickets": self._tickets}
+        tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(self._path)
 
     def get_all(
         self,
@@ -90,7 +115,7 @@ class TicketStore:
         tone: Optional[str] = None,
         category: Optional[str] = None,
         search: Optional[str] = None,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         result = self._tickets.copy()
 
         if status:
@@ -111,24 +136,28 @@ class TicketStore:
 
         return result
 
-    def get_by_id(self, ticket_id: int) -> Optional[dict]:
-        return next((t for t in self._tickets if t["id"] == ticket_id), None)
+    def get_by_id(self, ticket_id: int) -> Optional[dict[str, Any]]:
+        return next((t for t in self._tickets if t.get("id") == ticket_id), None)
 
-    def add(self, ticket_data: dict) -> dict:
+    def add(self, ticket_data: dict[str, Any]) -> dict[str, Any]:
+        ticket_data = dict(ticket_data)
         ticket_data["id"] = self._next_id
         ticket_data["created_at"] = datetime.datetime.now().isoformat()
         self._tickets.append(ticket_data)
         self._next_id += 1
+        self._save()
         return ticket_data
 
-    def update(self, ticket_id: int, fields: dict) -> Optional[dict]:
+    def update(self, ticket_id: int, fields: dict[str, Any]) -> Optional[dict[str, Any]]:
         ticket = self.get_by_id(ticket_id)
         if ticket is None:
             return None
+
         ticket.update({k: v for k, v in fields.items() if v is not None})
+        self._save()
         return ticket
 
-    def stats(self) -> dict:
+    def stats(self) -> dict[str, Any]:
         by_tone: dict[str, int] = {}
         by_category: dict[str, int] = {}
         by_status: dict[str, int] = {}
@@ -149,4 +178,4 @@ class TicketStore:
         }
 
 
-ticket_store = TicketStore()
+ticket_store = JsonTicketStore()
