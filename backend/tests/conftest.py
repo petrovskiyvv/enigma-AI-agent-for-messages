@@ -98,7 +98,7 @@ def store_with_data(ticket_store):
             "device_numbers": "А-2241",
             "device_type": "Тип Б",
             "original_text": "Нужен паспорт на прибор.",
-            "emotional_tone": "Нейтраль",
+            "emotional_tone": "Нейтрально",
             "category": "Документация",
             "issue_summary": "Запрос документов",
             "ai_response": "Ответ",

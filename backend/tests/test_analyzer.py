@@ -2,7 +2,7 @@
 Юнит-тесты: app/services/analyzer.py — класс TextAnalyzer
 
 Покрытие:
-  analyze_tone       — негатив / позитив / нейтрально / пустая строка / регистр
+  analyze_tone       — негатив / позитив / Нейтральноно / пустая строка / регистр
   classify_category  — все 4 категории / регистр / пустая строка
   extract_devices    — зав.номер / серийный паттерн / несколько / пусто / email не попадает
   extract_email      — стандарт / точки / пусто / в середине текста
@@ -39,14 +39,14 @@ class TestAnalyzeTone:
         assert az.analyze_tone("Спасибо, отлично, благодарим!") == "Позитив"
 
     def test_neutral_no_keywords(self, az):
-        assert az.analyze_tone("Прошу уточнить информацию о приборе.") == "Нейтрально"
+        assert az.analyze_tone("Прошу уточнить информацию о приборе.") == "Нейтральноно"
 
     def test_neutral_equal_score(self, az):
-        # ровно по одному слову из каждой группы → нейтрально
-        assert az.analyze_tone("Спасибо, но есть проблем с прибором.") == "Нейтрально"
+        # ровно по одному слову из каждой группы → Нейтральноно
+        assert az.analyze_tone("Спасибо, но есть проблем с прибором.") == "Нейтральноно"
 
     def test_empty_string(self, az):
-        assert az.analyze_tone("") == "Нейтрально"
+        assert az.analyze_tone("") == "Нейтральноно"
 
     def test_case_insensitive_negative(self, az):
         assert az.analyze_tone("СРОЧНО НЕ ВКЛЮЧ прибор") == "Негатив"

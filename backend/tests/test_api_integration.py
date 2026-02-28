@@ -154,7 +154,7 @@ class TestCreateTicket:
     def test_empty_text_defaults(self, client):
         r = client.post("/api/tickets", json={"original_text": ""})
         data = r.json()
-        assert data["emotional_tone"] == "Нейтрально"
+        assert data["emotional_tone"] == "Нейтральноно"
         assert data["ai_response"] == ""
 
     def test_ticket_appears_in_list(self, client):
@@ -299,7 +299,7 @@ class TestStats:
     def test_by_tone_keys(self, client_with_data):
         by_tone = client_with_data.get("/api/stats").json()["by_tone"]
         assert "Негатив" in by_tone
-        assert "Нейтрально" in by_tone
+        assert "Нейтральноно" in by_tone
         assert "Позитив" in by_tone
 
 

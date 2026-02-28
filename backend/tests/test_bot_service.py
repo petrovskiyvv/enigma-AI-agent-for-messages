@@ -109,7 +109,7 @@ async def test_handle_action_callback_take_and_decline(tmp_path, monkeypatch):
 
     # Telegram bindings have FK to tickets
     ticket_store = DbTicketStore()
-    t = ticket_store.add({"full_name": "A", "emotional_tone": "Нейтраль", "status": "Новое"})
+    t = ticket_store.add({"full_name": "A", "emotional_tone": "Нейтрально", "status": "Новое"})
     tid = str(t["id"])
 
     ts = DbTelegramTicketStore()
@@ -204,7 +204,7 @@ async def test_handle_discussion_auto_forward_send_and_edit(tmp_path, monkeypatc
     from app.core.store import DbTicketStore
 
     ticket_store = DbTicketStore()
-    t = ticket_store.add({"full_name": "A", "emotional_tone": "Нейтраль", "status": "Новое"})
+    t = ticket_store.add({"full_name": "A", "emotional_tone": "Нейтрально", "status": "Новое"})
     tid = str(t["id"])
 
     ts = DbTelegramTicketStore()
