@@ -43,3 +43,67 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+```gitignore
+# Flutter/Dart general
+.flutter-plugins
+.flutter-plugins-stamp.json
+.packages
+
+# pubspec.lock (if you want to ignore it globally; otherwise commit for reproducibility)
+pubspec.lock
+!pubspec.lock  # Uncomment the above and comment this if you want to commit root pubspec.lock
+
+# Build outputs
+build/
+*.g.dart
+
+# Flutter platform-specific generated files
+# iOS
+frontend/ios/Flutter/*.xcconfig
+frontend/ios/Flutter/Flutter.framework
+frontend/ios/Flutter/Generated.xcconfig
+frontend/ios/Runner.xcworkspace/
+frontend/ios/Runner/GeneratedPluginRegistrant.*
+
+# macOS
+frontend/macos/Flutter/*.xcconfig
+frontend/macos/Flutter/Flutter.framework
+frontend/macos/Runner.xcworkspace/
+frontend/macos/Runner.xcodeproj/xcshareddata/
+frontend/macos/Runner/GeneratedPluginRegistrant.*
+frontend/macos/Runner.xcodeproj/project.xcworkspace/
+frontend/macos/Runner.xcodeproj/xcuserdata/
+
+# Linux
+frontend/linux/flutter/generated_plugin_registrant.*
+frontend/linux/flutter/generated_plugins.cmake
+
+# Windows
+frontend/windows/flutter/generated_plugin_registrant.*
+frontend/windows/flutter/generated_plugins.cmake
+frontend/windows/flutter/generated_plugins.cmake.deps
+frontend/windows/flutter/generated_plugin_registrant.cc
+
+# Xcode general (applies to iOS/macOS)
+*.xcuserstate
+*.xccheckout
+xcuserdata/
+profile
+
+# Generated Xcode project files in Flutter
+frontend/*/Runner.xcdeps/
+frontend/macos/Runner.xcodeproj/project.pbxproj  # If it's generated/unversioned
+
+# Android (if present)
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/app/build/
+
+# Web (if present)
+frontend/web/build/
+
+# IDEs
+.vscode/settings.json
+*.swo
+*~

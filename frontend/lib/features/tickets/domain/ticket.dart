@@ -40,7 +40,7 @@ class Ticket {
         email: json['email'] as String? ?? '',
         deviceNumbers: json['device_numbers'] as String? ?? '',
         deviceType: json['device_type'] as String? ?? '',
-        emotionalTone: json['emotional_tone'] as String? ?? 'Нейтраль',
+        emotionalTone: json['emotional_tone'] as String? ?? 'Нейтрально',
         category: json['category'] as String? ?? '',
         issueSummary: json['issue_summary'] as String? ?? '',
         originalText: json['original_text'] as String? ?? '',
