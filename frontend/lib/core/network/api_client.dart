@@ -35,4 +35,8 @@ class ApiClient {
   }
 }
 
-final apiClient = ApiClient(baseUrl: 'http://127.0.0.1:8000');
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+final apiClient = ApiClient(
+  baseUrl: kIsWeb ? '' : 'http://127.0.0.1:8000',
+);
