@@ -54,7 +54,7 @@ def test_match_ticket_for_auto_forward(monkeypatch):
                 }
             ]
 
-    monkeypatch.setattr(bot_service, "ticket_store", DummyTS())
+    monkeypatch.setattr(bot_service, "telegram_ticket_store", DummyTS())
 
     msg = {
         "is_automatic_forward": True,
@@ -104,15 +104,21 @@ async def test_tg_call_ok_and_not_ok():
 @pytest.mark.asyncio
 async def test_handle_action_callback_take_and_decline(tmp_path, monkeypatch):
     from app.bot import bot_service
-    from app.core.telegram_ticket_store import JsonTelegramTicketStore
+    from app.core.telegram_ticket_store import DbTelegramTicketStore
+    from app.core.store import DbTicketStore
 
-    ts = JsonTelegramTicketStore(path=str(tmp_path / "tickets.json"))
+    # Telegram bindings have FK to tickets
+    ticket_store = DbTicketStore()
+    t = ticket_store.add({"full_name": "A", "emotional_tone": "Нейтраль", "status": "Новое"})
+    tid = str(t["id"])
+
+    ts = DbTelegramTicketStore()
     monkeypatch.setattr(bot_service, "ticket_store", ts)
 
     monkeypatch.setattr(bot_service, "_utc_now_iso", lambda: "2030-01-01T00:00:00+00:00")
 
     ts.upsert_ticket(
-        "t1",
+        tid,
         {
             "base_text": "BASE",
             "channel_chat_id": -10,
@@ -120,7 +126,6 @@ async def test_handle_action_callback_take_and_decline(tmp_path, monkeypatch):
             "discussion_chat_id": -11,
             "timeline_message_id": 2,
             "assignee": None,
-            "events": [],
         },
     )
 
@@ -135,12 +140,12 @@ async def test_handle_action_callback_take_and_decline(tmp_path, monkeypatch):
     upd_take = {
         "callback_query": {
             "id": "cq1",
-            "data": "take:t1",
+            "data": f"take:{tid}",
             "from": {"username": "alice"},
         }
     }
     await bot_service._handle_action_callback(types.SimpleNamespace(), upd_take)
-    t = ts.get("t1")
+    t = ts.get(tid)
     assert t["assignee"] == "@alice"
     assert any(e["type"] == "taken" for e in t["events"])
     assert any(m == "editMessageText" for m, _ in calls)
@@ -156,12 +161,12 @@ async def test_handle_action_callback_take_and_decline(tmp_path, monkeypatch):
     upd_take_bob = {
         "callback_query": {
             "id": "cq2",
-            "data": "take:t1",
+            "data": f"take:{tid}",
             "from": {"username": "bob"},
         }
     }
     await bot_service._handle_action_callback(types.SimpleNamespace(), upd_take_bob)
-    t2 = ts.get("t1")
+    t2 = ts.get(tid)
     assert t2["assignee"] == "@bob"
     assert any(e["type"] == "retaken" for e in t2["events"])
 
@@ -170,7 +175,7 @@ async def test_handle_action_callback_take_and_decline(tmp_path, monkeypatch):
     upd_decl_forbidden = {
         "callback_query": {
             "id": "cq3",
-            "data": "decline:t1",
+            "data": f"decline:{tid}",
             "from": {"username": "alice"},
         }
     }
@@ -182,12 +187,12 @@ async def test_handle_action_callback_take_and_decline(tmp_path, monkeypatch):
     upd_decl = {
         "callback_query": {
             "id": "cq4",
-            "data": "decline:t1",
+            "data": f"decline:{tid}",
             "from": {"username": "bob"},
         }
     }
     await bot_service._handle_action_callback(types.SimpleNamespace(), upd_decl)
-    t3 = ts.get("t1")
+    t3 = ts.get(tid)
     assert t3["assignee"] is None
     assert any(e["type"] == "released" for e in t3["events"])
 
@@ -195,20 +200,24 @@ async def test_handle_action_callback_take_and_decline(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_handle_discussion_auto_forward_send_and_edit(tmp_path, monkeypatch):
     from app.bot import bot_service
-    from app.core.telegram_ticket_store import JsonTelegramTicketStore
+    from app.core.telegram_ticket_store import DbTelegramTicketStore
+    from app.core.store import DbTicketStore
 
-    ts = JsonTelegramTicketStore(path=str(tmp_path / "tickets.json"))
+    ticket_store = DbTicketStore()
+    t = ticket_store.add({"full_name": "A", "emotional_tone": "Нейтраль", "status": "Новое"})
+    tid = str(t["id"])
+
+    ts = DbTelegramTicketStore()
     monkeypatch.setattr(bot_service, "ticket_store", ts)
 
     ts.upsert_ticket(
-        "t1",
+        tid,
         {
             "created_at": "2030-01-01",
             "discussion_chat_id": -100,
             "channel_chat_id": -200,
             "channel_message_id": 10,
             "assignee": None,
-            "events": [],
         },
     )
 
@@ -233,7 +242,7 @@ async def test_handle_discussion_auto_forward_send_and_edit(tmp_path, monkeypatc
     }
 
     await bot_service._handle_discussion_auto_forward(types.SimpleNamespace(), upd)
-    t = ts.get("t1")
+    t = ts.get(tid)
     assert t["discussion_root_message_id"] == 55
     assert t["timeline_message_id"] == 777
     assert any(m == "sendMessage" for m, _ in calls)

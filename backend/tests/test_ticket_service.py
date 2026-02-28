@@ -2,7 +2,7 @@
 Юнит-тесты: app/services/ticket_service.py — класс TicketService
 
 Используем monkeypatch для подмены глобального ticket_store внутри модуля,
-чтобы сервис работал с изолированным tmp_store, а не с production-файлом.
+чтобы сервис работал с изолированным тестовым DB store.
 
 Покрытие:
   get_list           — делегирование в store (фильтры прокидываются)
@@ -19,9 +19,9 @@ from app.schemas.ticket import TicketCreate, TicketUpdate
 
 
 @pytest.fixture
-def service(tmp_store, monkeypatch):
+def service(ticket_store, monkeypatch):
     import app.services.ticket_service as svc_module
-    monkeypatch.setattr(svc_module, "ticket_store", tmp_store)
+    monkeypatch.setattr(svc_module, "ticket_store", ticket_store)
     return TicketService()
 
 

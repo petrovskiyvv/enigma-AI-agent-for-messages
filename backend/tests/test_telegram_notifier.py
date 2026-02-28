@@ -23,12 +23,14 @@ def test_format_ticket_base_contains_key_fields():
 async def test_notify_new_ticket_creates_ticket_record(tmp_path, monkeypatch):
     from app.services import telegram_notifier
     from app.core.config import settings
-    from app.core.telegram_ticket_store import JsonTelegramTicketStore
+    from app.core.telegram_ticket_store import DbTelegramTicketStore
+    from app.core.models import Ticket
+    from app.core.db import SessionLocal
 
     monkeypatch.setattr(settings, "telegram_bot_token", "TEST")
 
-    ts = JsonTelegramTicketStore(path=str(tmp_path / "tickets.json"))
-    monkeypatch.setattr(telegram_notifier, "ticket_store", ts)
+    ts = DbTelegramTicketStore()
+    monkeypatch.setattr(telegram_notifier, "telegram_ticket_store", ts)
 
     class DummyChannelStore:
         def list_active_channels(self):
@@ -55,6 +57,12 @@ async def test_notify_new_ticket_creates_ticket_record(tmp_path, monkeypatch):
         "facility": "X",
         "issue_summary": "Y",
     }
+
+    # Ensure FK target exists (Telegram bindings reference tickets.id)
+    with SessionLocal() as db:
+        db.add(Ticket(id=7, full_name="Иванов Иван", emotional_tone="Нейтраль", status="Новое"))
+        db.commit()
+
     await telegram_notifier.notify_new_ticket(ticket)
 
     assert any(m == "sendMessage" for m, _ in calls)
