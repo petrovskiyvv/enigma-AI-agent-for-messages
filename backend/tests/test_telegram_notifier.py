@@ -60,7 +60,7 @@ async def test_notify_new_ticket_creates_ticket_record(tmp_path, monkeypatch):
 
     # Ensure FK target exists (Telegram bindings reference tickets.id)
     with SessionLocal() as db:
-        db.add(Ticket(id=7, full_name="Иванов Иван", emotional_tone="Нейтраль", status="Новое"))
+        db.add(Ticket(id=7, full_name="Иванов Иван", emotional_tone="Нейтрально", status="Новое"))
         db.commit()
 
     await telegram_notifier.notify_new_ticket(ticket)

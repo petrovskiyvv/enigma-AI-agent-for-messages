@@ -14,7 +14,7 @@ class TicketService:
 
     def create(self, data: TicketCreate) -> dict:
         text = data.original_text
-        tone = analyzer.analyze_tone(text) if text else "Нейтрально"
+        tone = analyzer.analyze_tone(text) if text else "Нейтральноно"
         category = analyzer.classify_category(text) if text else "Общий вопрос"
 
         return ticket_store.add({

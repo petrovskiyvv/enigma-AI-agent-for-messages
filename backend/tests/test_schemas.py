@@ -139,7 +139,7 @@ class TestStatsResponse:
     def test_valid_stats(self):
         s = StatsResponse(
             total=3,
-            by_tone={"Негатив": 1, "Нейтрально": 2},
+            by_tone={"Негатив": 1, "Нейтральноно": 2},
             by_category={"Калибровка": 1},
             by_status={"Новое": 3},
         )

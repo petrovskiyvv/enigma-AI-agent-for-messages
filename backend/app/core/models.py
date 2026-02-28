@@ -34,7 +34,7 @@ class Ticket(Base):
     status: Mapped[str | None] = mapped_column(String(50))
 
     __table_args__ = (
-        CheckConstraint("emotional_tone IN ('Позитив','Нейтраль','Негатив')", name="chk_tickets_emotional_tone"),
+        CheckConstraint("emotional_tone IN ('Позитив','Нейтрально','Негатив')", name="chk_tickets_emotional_tone"),
         CheckConstraint("status IN ('Новое','В работе','Закрыто')", name="chk_tickets_status"),
     )
 

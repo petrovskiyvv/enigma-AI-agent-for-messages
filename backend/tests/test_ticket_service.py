@@ -94,7 +94,7 @@ class TestCreate:
     def test_create_without_text_uses_defaults(self, service):
         data = TicketCreate(full_name="Петров Пётр")
         ticket = service.create(data)
-        assert ticket["emotional_tone"] == "Нейтрально"
+        assert ticket["emotional_tone"] == "Нейтральноно"
         assert ticket["category"] == "Общий вопрос"
         assert ticket["issue_summary"] == ""
         assert ticket["ai_response"] == ""
