@@ -9,21 +9,22 @@ class SearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return SizedBox(
       height: 36,
       child: TextField(
-        style: const TextStyle(color: AppColors.text, fontSize: 13),
+        style: TextStyle(color: colors.text, fontSize: 13),
         onChanged: onChanged,
         decoration: InputDecoration(
           hintText: hint ?? 'Поиск...',
-          hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary, size: 16),
+          hintStyle: TextStyle(color: colors.textSecondary, fontSize: 13),
+          prefixIcon: Icon(Icons.search, color: colors.textSecondary, size: 16),
           filled: true,
-          fillColor: AppColors.card,
+          fillColor: colors.card,
           contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-          border: _border(AppColors.border),
-          enabledBorder: _border(AppColors.border),
-          focusedBorder: _border(AppColors.accent),
+          border:        _border(colors.border),
+          enabledBorder: _border(colors.border),
+          focusedBorder: _border(colors.accent),
         ),
       ),
     );

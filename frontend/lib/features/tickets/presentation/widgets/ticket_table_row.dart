@@ -19,40 +19,42 @@ class _TicketTableRowState extends State<TicketTableRow> {
 
   @override
   Widget build(BuildContext context) {
-    final t = widget.ticket;
+    final t      = widget.ticket;
+    final colors = context.colors;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onExit:  (_) => setState(() => _hovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           decoration: BoxDecoration(
-            color: _hovered ? AppColors.card : Colors.transparent,
-            border: Border(bottom: BorderSide(color: AppColors.border.withOpacity(0.5))),
+            color: _hovered ? colors.card : Colors.transparent,
+            border: Border(bottom: BorderSide(color: colors.border.withOpacity(0.5))),
           ),
           child: Row(children: [
-            _cell(formatDate(t.createdAt), 110, secondary: true),
-            _cell(t.fullName.isEmpty ? '—' : t.fullName, 160),
-            _cell(t.facility.isEmpty ? '—' : t.facility, 160, secondary: true),
-            _cell(t.deviceNumbers.isEmpty ? '—' : t.deviceNumbers, 140, secondary: true),
-            _cell(t.deviceType.isEmpty ? '—' : t.deviceType, 150, secondary: true),
+            _cell(formatDate(t.createdAt), 110, colors, secondary: true),
+            _cell(t.fullName.isEmpty       ? '—' : t.fullName,       160, colors),
+            _cell(t.facility.isEmpty       ? '—' : t.facility,       160, colors, secondary: true),
+            _cell(t.deviceNumbers.isEmpty  ? '—' : t.deviceNumbers,  140, colors, secondary: true),
+            _cell(t.deviceType.isEmpty     ? '—' : t.deviceType,     150, colors, secondary: true),
             SizedBox(
               width: 110,
-              child: StatusBadge(text: t.emotionalTone, color: toneColor(t.emotionalTone)),
+              child: StatusBadge(text: t.emotionalTone, color: toneColor(context, t.emotionalTone)),
             ),
-            _cell(t.category.isEmpty ? '—' : t.category, 120),
+            _cell(t.category.isEmpty ? '—' : t.category, 120, colors),
             Expanded(
               child: Text(
                 t.issueSummary.isEmpty ? '—' : t.issueSummary,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: TextStyle(color: colors.textSecondary, fontSize: 12),
               ),
             ),
             SizedBox(
               width: 100,
-              child: StatusBadge(text: t.status, color: statusColor(t.status)),
+              child: StatusBadge(text: t.status, color: statusColor(context, t.status)),
             ),
           ]),
         ),
@@ -60,14 +62,14 @@ class _TicketTableRowState extends State<TicketTableRow> {
     );
   }
 
-  Widget _cell(String text, double width, {bool secondary = false}) {
+  Widget _cell(String text, double width, AppColors colors, {bool secondary = false}) {
     return SizedBox(
       width: width,
       child: Text(
         text,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-          color: secondary ? AppColors.textSecondary : AppColors.text,
+          color: secondary ? colors.textSecondary : colors.text,
           fontSize: secondary ? 12 : 13,
         ),
       ),
