@@ -16,7 +16,6 @@
 """
 
 import json
-import pytest
 from app.core.store import JsonTicketStore
 
 
