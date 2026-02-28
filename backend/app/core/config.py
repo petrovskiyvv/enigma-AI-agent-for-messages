@@ -9,6 +9,11 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["*"]
 
+    telegram_bot_token: str = ""
+    telegram_store_path: str = "telegram_channels.json"
+    telegram_ticket_store_path: str = "telegram_tickets.json"
+    telegram_link_token_ttl_minutes: int = 10
+
     class Config:
         env_file = ".env"
 
