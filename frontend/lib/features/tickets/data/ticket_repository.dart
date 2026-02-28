@@ -20,6 +20,11 @@ class TicketRepository {
     return data.map((e) => Ticket.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  Future<Ticket> create(Map<String, String> fields) async {
+    final data = await _client.post('/api/tickets', fields);
+    return Ticket.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<Ticket> update(int id, {String? aiResponse, String? status}) async {
     final data = await _client.patch('/api/tickets/$id', {
       if (aiResponse != null) 'ai_response': aiResponse,
