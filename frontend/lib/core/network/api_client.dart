@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
@@ -35,8 +37,10 @@ class ApiClient {
   }
 }
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+String _getBaseUrl() {
+  if (kIsWeb) return 'http://127.0.0.1:8000';
+  if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000';
+  return 'http://127.0.0.1:8000';
+}
 
-final apiClient = ApiClient(
-  baseUrl: kIsWeb ? '' : 'http://127.0.0.1:8000',
-);
+final apiClient = ApiClient(baseUrl: _getBaseUrl());

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.text, required this.color});
@@ -19,11 +18,7 @@ class StatusBadge extends StatelessWidget {
       child: Text(
         text,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
       ),
     );
   }
