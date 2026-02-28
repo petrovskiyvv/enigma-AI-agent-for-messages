@@ -118,8 +118,13 @@ class _DesktopHeader extends StatelessWidget {
         children: [
           _Logo(),
           const SizedBox(width: 14),
-          Text('Система технической поддержки',
-              style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+          Flexible(
+            child: Text(
+              'Система технической поддержки',
+              style: TextStyle(color: colors.textSecondary, fontSize: 13),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           const Spacer(),
           if (stats != null) ...[
             _StatBadge(
@@ -305,7 +310,7 @@ class _DesktopTabBar extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelect;
 
-  static const _tabs = ['Обращения', 'Аналитика', 'Анализ письма'];
+  static const _tabs = ['Обращения', 'Аналитика', 'Создать обращение'];
 
   @override
   Widget build(BuildContext context) {
@@ -376,7 +381,7 @@ class _MobileNavBar extends StatelessWidget {
           NavigationDestination(
             icon:         Icon(Icons.auto_awesome_outlined, color: colors.textSecondary),
             selectedIcon: Icon(Icons.auto_awesome,          color: colors.accent),
-            label: 'Анализ',
+            label: 'Создать',
           ),
         ],
       ),
