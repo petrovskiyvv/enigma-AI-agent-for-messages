@@ -49,7 +49,7 @@ def store_with_data(tmp_store):
         "phone": "+7 (347) 222-22-22", "email": "petra@test.ru",
         "device_numbers": "А-2241", "device_type": "Тип Б",
         "original_text": "Нужен паспорт на прибор.",
-        "emotional_tone": "Нейтраль", "category": "Документация",
+        "emotional_tone": "Нейтрально", "category": "Документация",
         "issue_summary": "Запрос документов", "ai_response": "Ответ", "status": "В работе",
     })
     tmp_store.add({

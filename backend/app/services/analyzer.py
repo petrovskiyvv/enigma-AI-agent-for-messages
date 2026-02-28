@@ -52,7 +52,7 @@ class TextAnalyzer:
             return "Негатив"
         if pos > neg:
             return "Позитив"
-        return "Нейтраль"
+        return "Нейтрально"
 
     def classify_category(self, text: str) -> str:
         text_lower = text.lower()
