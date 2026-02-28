@@ -17,19 +17,18 @@ class FilterDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return SizedBox(
       height: 36,
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Text(hint, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-          dropdownColor: AppColors.card,
+          hint: Text(hint, style: TextStyle(color: colors.textSecondary, fontSize: 12)),
+          dropdownColor: colors.card,
           borderRadius: BorderRadius.circular(8),
-          style: const TextStyle(color: AppColors.text, fontSize: 12),
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary, size: 16),
-          items: items
-              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-              .toList(),
+          style: TextStyle(color: colors.text, fontSize: 12),
+          icon: Icon(Icons.keyboard_arrow_down, color: colors.textSecondary, size: 16),
+          items: items.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
           onChanged: onChanged,
         ),
       ),

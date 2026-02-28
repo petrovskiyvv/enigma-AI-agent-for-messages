@@ -46,34 +46,37 @@ class _TicketDialogState extends State<TicketDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final t = widget.ticket;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
     return Dialog(
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.border),
+        side: BorderSide(color: colors.border),
       ),
       child: SizedBox(
-        width: 860,
+        width: isMobile ? screenWidth * 0.95 : 860,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildHeader(t),
+            _buildHeader(context, t),
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildMetaGrid(t),
+                    _buildMetaGrid(context, t),
                     if (t.originalText.isNotEmpty) ...[
                       const SizedBox(height: 20),
-                      _buildOriginalText(t.originalText),
+                      _buildOriginalText(context, t.originalText),
                     ],
                     const SizedBox(height: 20),
-                    _buildResponseEditor(),
+                    _buildResponseEditor(context),
                     const SizedBox(height: 20),
-                    _buildFooter(),
+                    _buildFooter(context),
                   ],
                 ),
               ),
@@ -84,38 +87,52 @@ class _TicketDialogState extends State<TicketDialog> {
     );
   }
 
-  Widget _buildHeader(Ticket t) {
+  Widget _buildHeader(BuildContext context, Ticket t) {
+    final colors = context.colors;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      decoration: const BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.only(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(12),
           topRight: Radius.circular(12),
         ),
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+        border: Border(bottom: BorderSide(color: colors.border)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Обращение #${t.id}',
-            style: const TextStyle(color: AppColors.text, fontWeight: FontWeight.bold, fontSize: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Обращение #${t.id}',
+                  style: TextStyle(color: colors.text, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    StatusBadge(text: t.emotionalTone, color: toneColor(context, t.emotionalTone)),
+                    StatusBadge(text: t.category, color: colors.accent),
+                  ],
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 16),
-          StatusBadge(text: t.emotionalTone, color: toneColor(t.emotionalTone)),
-          const SizedBox(width: 8),
-          StatusBadge(text: t.category, color: AppColors.accent),
-          const Spacer(),
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close, color: AppColors.textSecondary),
+            icon: Icon(Icons.close, color: colors.textSecondary),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMetaGrid(Ticket t) {
+  Widget _buildMetaGrid(BuildContext context, Ticket t) {
+    final colors = context.colors;
     final fields = [
       ('ФИО', t.fullName),
       ('Объект', t.facility),
@@ -127,111 +144,122 @@ class _TicketDialogState extends State<TicketDialog> {
     return Wrap(
       spacing: 16,
       runSpacing: 12,
-      children: fields
-          .map((f) => SizedBox(
-                width: 240,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(f.$1, style: const TextStyle(color: AppColors.textSecondary, fontSize: 10, letterSpacing: 0.5)),
-                    const SizedBox(height: 3),
-                    Text(
-                      f.$2.isNotEmpty ? f.$2 : '—',
-                      style: const TextStyle(color: AppColors.text, fontSize: 13),
-                    ),
-                  ],
-                ),
-              ))
-          .toList(),
+      children: fields.map((f) => SizedBox(
+        width: 200,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(f.$1, style: TextStyle(color: colors.textSecondary, fontSize: 10, letterSpacing: 0.5)),
+            const SizedBox(height: 3),
+            Text(
+              f.$2.isNotEmpty ? f.$2 : '—',
+              style: TextStyle(color: colors.text, fontSize: 13),
+            ),
+          ],
+        ),
+      )).toList(),
     );
   }
 
-  Widget _buildOriginalText(String text) {
+  Widget _buildOriginalText(BuildContext context, String text) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Исходное письмо', style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text('Исходное письмо', style: TextStyle(color: colors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.card,
+            color: colors.card,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: colors.border),
           ),
-          child: Text(text, style: const TextStyle(color: AppColors.text, fontSize: 13, height: 1.6)),
+          child: Text(text, style: TextStyle(color: colors.text, fontSize: 13, height: 1.6)),
         ),
       ],
     );
   }
 
-  Widget _buildResponseEditor() {
+  Widget _buildResponseEditor(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Черновик ответа', style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text('Черновик ответа', style: TextStyle(color: colors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextField(
           controller: _responseCtrl,
           maxLines: 8,
-          style: const TextStyle(color: AppColors.text, fontSize: 13, height: 1.6),
+          style: TextStyle(color: colors.text, fontSize: 13, height: 1.6),
           decoration: InputDecoration(
             filled: true,
-            fillColor: AppColors.card,
-            border: _border(AppColors.border),
-            enabledBorder: _border(AppColors.border),
-            focusedBorder: _border(AppColors.accent),
+            fillColor: colors.card,
+            border:        _border(colors.border),
+            enabledBorder: _border(colors.border),
+            focusedBorder: _border(colors.accent),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFooter() {
-    return Row(
+  Widget _buildFooter(BuildContext context) {
+    final colors = context.colors;
+    final saveButton = ElevatedButton.icon(
+      onPressed: _saving ? null : _save,
+      icon: _saving
+          ? SizedBox(
+        width: 14, height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2, color: colors.bg),
+      )
+          : const Icon(Icons.save_rounded, size: 16),
+      label: const Text('Сохранить'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: colors.accent,
+        foregroundColor: colors.bg,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Статус:', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-        const SizedBox(width: 12),
-        DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _status,
-            dropdownColor: AppColors.card,
-            style: const TextStyle(color: AppColors.text, fontSize: 13),
-            items: ['Новое', 'В работе', 'Закрыто']
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                .toList(),
-            onChanged: (v) => setState(() => _status = v!),
-          ),
+        Row(
+          children: [
+            Text('Статус:', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+            const SizedBox(width: 12),
+            DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _status,
+                dropdownColor: colors.card,
+                style: TextStyle(color: colors.text, fontSize: 13),
+                items: ['Новое', 'В работе', 'Закрыто']
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
+                onChanged: (v) => setState(() => _status = v!),
+              ),
+            ),
+          ],
         ),
-        const Spacer(),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена', style: TextStyle(color: AppColors.textSecondary)),
-        ),
-        const SizedBox(width: 10),
-        ElevatedButton.icon(
-          onPressed: _saving ? null : _save,
-          icon: _saving
-              ? const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.bg),
-                )
-              : const Icon(Icons.save_rounded, size: 16),
-          label: const Text('Сохранить'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.accent,
-            foregroundColor: AppColors.bg,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Отмена', style: TextStyle(color: colors.textSecondary)),
+            ),
+            const SizedBox(width: 10),
+            saveButton,
+          ],
         ),
       ],
     );
   }
 
   OutlineInputBorder _border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: color),
-      );
+    borderRadius: BorderRadius.circular(8),
+    borderSide: BorderSide(color: color),
+  );
 }
