@@ -85,9 +85,9 @@ def read_file(path: str) -> str:
 # ── Разбиение на чанки ─────────────────────────────────────────────────────────
 
 def _split_into_chunks(
-    text: str,
-    chunk_size: int = 400,
-    overlap: int = 60,
+        text: str,
+        chunk_size: int = 400,
+        overlap: int = 60,
 ) -> list[str]:
     """
     Разбивает текст на куски по ~chunk_size слов с перекрытием overlap слов.
@@ -118,6 +118,7 @@ def _split_into_chunks(
 # ── Сохранение в БД ───────────────────────────────────────────────────────────
 
 def _save_chunks(source: str, chunks: list[str], embeddings) -> None:
+    import json
     with SessionLocal() as db:
         # Удаляем старую версию документа
         db.execute(
@@ -125,6 +126,9 @@ def _save_chunks(source: str, chunks: list[str], embeddings) -> None:
             {"s": source},
         )
         for idx, (chunk, emb) in enumerate(zip(chunks, embeddings)):
+            # Сохраняем эмбеддинг как JSON-строку — совместимо и без pgvector,
+            # и с pgvector через ::vector cast в retriever.py
+            emb_str = json.dumps(emb.tolist())
             db.execute(
                 text("""
                     INSERT INTO knowledge_chunks (source, chunk_index, chunk_text, embedding)
@@ -134,7 +138,7 @@ def _save_chunks(source: str, chunks: list[str], embeddings) -> None:
                     "source": source,
                     "idx": idx,
                     "chunk": chunk,
-                    "emb": emb.tolist(),
+                    "emb": emb_str,
                 },
             )
         db.commit()

@@ -10,12 +10,48 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
+from sqlalchemy import text
 
+from app.core.db import engine
 from app.knowledge.loader import document_loader
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
+
+
+def _ensure_table_exists() -> None:
+    """Создаёт таблицу knowledge_chunks если её нет. Работает с pgvector и без него."""
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.commit()
+            emb_type = "vector(384)"
+        except Exception:
+            conn.rollback()
+            emb_type = "text"
+
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS knowledge_chunks (
+                id          BIGSERIAL PRIMARY KEY,
+                source      VARCHAR(512) NOT NULL,
+                chunk_index INTEGER      NOT NULL,
+                chunk_text  TEXT         NOT NULL,
+                embedding   {emb_type}   NOT NULL,
+                created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+            )
+        """))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_kc_source ON knowledge_chunks(source)"
+        ))
+        conn.commit()
+        logger.info("knowledge_chunks: таблица готова (embedding=%s)", emb_type)
+
+
+try:
+    _ensure_table_exists()
+except Exception as _init_err:
+    logger.error("Не удалось создать таблицу knowledge_chunks: %s", _init_err)
 
 ALLOWED_EXTENSIONS = {".txt", ".docx", ".pdf"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
@@ -45,10 +81,18 @@ def _process_file(job_id: str, tmp_path: str, filename: str) -> None:
             path=tmp_path,
             source_name=filename,
         )
+        if chunks_count == 0:
+            # Документ прочитан, но чанков не создано — значит текст слишком короткий
+            # или все фрагменты отфильтрованы (< 20 слов). Это не ошибка — статус DONE.
+            logger.warning(
+                "Задача %s: документ '%s' прочитан, но чанков не создано. "
+                "Проверьте, что файл содержит текст (не только изображения / сканы).",
+                job_id, filename,
+            )
         _jobs[job_id].update({"status": JobStatus.DONE, "chunks": chunks_count})
         logger.info("Задача %s завершена: %d чанков", job_id, chunks_count)
     except Exception as exc:
-        logger.exception("Ошибка задачи %s ('%s')", job_id, filename)
+        logger.exception("Ошибка задачи %s ('%s'): %s", job_id, filename, exc)
         _jobs[job_id].update({"status": JobStatus.ERROR, "error": str(exc)})
     finally:
         Path(tmp_path).unlink(missing_ok=True)
@@ -90,7 +134,7 @@ async def upload_document(file: UploadFile = File(...)):
     }
 
     # Запускаем обработку в пуле потоков — event loop не блокируется
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.run_in_executor(_executor, _process_file, job_id, tmp_path, file.filename)
 
     logger.info("Задача %s создана для '%s'", job_id, file.filename)
@@ -110,6 +154,34 @@ async def get_job_status(job_id: str):
         "chunks":  job["chunks"],
         "error":   job["error"],
     }
+
+
+@router.get("/jobs")
+async def list_all_jobs():
+    """Диагностика: все задачи обработки в памяти."""
+    return [
+        {"job_id": jid, **info}
+        for jid, info in _jobs.items()
+    ]
+
+
+@router.get("/debug")
+async def debug_info():
+    """Диагностика: проверяет таблицу и возвращает количество чанков."""
+    from sqlalchemy import text as sql_text
+    try:
+        with engine.connect() as conn:
+            count = conn.execute(sql_text("SELECT COUNT(*) FROM knowledge_chunks")).scalar()
+            sources = conn.execute(sql_text(
+                "SELECT source, COUNT(*) as n FROM knowledge_chunks GROUP BY source"
+            )).fetchall()
+        return {
+            "table_exists": True,
+            "total_chunks": count,
+            "sources": [{"source": r[0], "chunks": r[1]} for r in sources],
+        }
+    except Exception as exc:
+        return {"table_exists": False, "error": str(exc)}
 
 
 @router.get("")

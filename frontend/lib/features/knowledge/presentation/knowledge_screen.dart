@@ -136,7 +136,7 @@ class _KnowledgeScreenState extends State<KnowledgeScreen> {
     try {
       final result = await _repo.uploadBytes(bytes: bytes, filename: filename);
       setState(() => _uploadStatus =
-      '✅ ${result['source']} — создано ${result['chunks']} фрагментов');
+      '✅ ${result['source']} — успешно добавлен и ожидает обработки');
       await _load();
     } catch (e) {
       setState(() => _uploadStatus = '❌ Ошибка: $e');

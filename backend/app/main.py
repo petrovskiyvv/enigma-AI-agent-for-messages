@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api import api_router
+from app.core.seed import seed_tickets
 
 
 def create_app() -> FastAPI:
@@ -17,6 +18,10 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(api_router)
+
+    @app.on_event("startup")
+    def on_startup():
+        seed_tickets()
 
     @app.get("/health")
     async def health():
