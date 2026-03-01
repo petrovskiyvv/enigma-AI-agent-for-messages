@@ -1,0 +1,61 @@
+name: Backend CI
+
+on:
+  push:
+    branches: ["**"]          # на каждый пуш в любую ветку
+  pull_request:
+    branches: [main, develop] # + при открытии PR в main/develop
+
+jobs:
+  test:
+    name: Tests & Coverage
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend   # все команды — из папки backend
+
+    steps:
+      # ── 1. Получить код ──────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Установить Python ─────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-test.txt
+
+      # ── 3. Установить зависимости ────────────────────────────────
+      - name: Install dependencies
+        run: pip install -r requirements-test.txt
+
+      # ── 4. Линтер — быстрая проверка стиля ──────────────────────
+      - name: Lint with ruff
+        run: |
+          pip install ruff
+          ruff check app/ tests/
+
+      # ── 5. Юнит + интеграционные тесты с покрытием ───────────────
+      - name: Run tests
+        run: pytest
+
+      # ── 6. Загрузить отчёт покрытия в GitHub (PR-комментарий) ───
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false   # не ломать CI из-за codecov
+
+      # ── 7. Сохранить coverage.xml как артефакт ───────────────────
+      - name: Archive coverage artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend/coverage.xml
+          retention-days: 14

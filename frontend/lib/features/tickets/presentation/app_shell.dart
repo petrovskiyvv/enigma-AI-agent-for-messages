@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/responsive.dart';
 import '../../analyze/presentation/analyze_screen.dart';
+import '../../knowledge/presentation/knowledge_screen.dart';
 import '../../stats/presentation/stats_screen.dart';
 import '../../tickets/data/ticket_repository.dart';
 import '../../tickets/presentation/tickets_screen.dart';
+import '../../../main.dart';
 
 const _kBaseUrl = 'http://127.0.0.1:8000';
 
@@ -15,9 +19,7 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
-  static const _tabs = ['Обращения', 'Аналитика', 'Анализ письма'];
-
-  int _tab = 0; // 0=Обращения, 1=Аналитика, 2=Анализ письма
+  int _tab = 0;
   Map<String, dynamic>? _stats;
 
   @override
@@ -33,70 +35,374 @@ class _AppShellState extends State<AppShell> {
     } catch (_) {}
   }
 
-  void _exportCsv() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Откройте в браузере: $_kBaseUrl/api/export/csv'),
-        backgroundColor: AppColors.card,
-        action: SnackBarAction(label: 'OK', textColor: AppColors.accent, onPressed: () {}),
-      ),
-    );
+  Future<void> _download(String format) async {
+    final url = Uri.parse('$_kBaseUrl/api/export/$format');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Не удалось открыть: $url'),
+          backgroundColor: context.colors.card,
+          action: SnackBarAction(
+            label: 'OK',
+            textColor: context.colors.accent,
+            onPressed: () {},
+          ),
+        ),
+      );
+    }
   }
+
+  Widget _buildBody() => switch (_tab) {
+    0 => TicketsScreen(onStatsChanged: _loadStats),
+    1 => const StatsScreen(),
+    2 => AnalyzeScreen(onTicketCreated: _loadStats),
+    3 => const KnowledgeScreen(),
+    _ => const SizedBox.shrink(),
+  };
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final mobile = isMobile(context);
+
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: colors.bg,
+      bottomNavigationBar: mobile
+          ? _MobileNavBar(selected: _tab, onSelect: (i) => setState(() => _tab = i))
+          : null,
       body: Column(
         children: [
-          _Header(stats: _stats, onRefresh: _loadStats, onExportCsv: _exportCsv),
-          _TabBar(tabs: _tabs, selected: _tab, onSelect: (i) => setState(() => _tab = i)),
+          mobile
+              ? _MobileHeader(stats: _stats, onRefresh: _loadStats, onDownload: _download)
+              : _DesktopHeader(stats: _stats, onRefresh: _loadStats, onDownload: _download),
+          if (!mobile)
+            _DesktopTabBar(
+              selected: _tab,
+              onSelect: (i) => setState(() => _tab = i),
+            ),
           Expanded(child: _buildBody()),
         ],
       ),
     );
   }
-
-  Widget _buildBody() => switch (_tab) {
-        0 => TicketsScreen(onStatsChanged: _loadStats),
-        1 => const StatsScreen(),
-        2 => AnalyzeScreen(onTicketCreated: _loadStats),
-        _ => const SizedBox.shrink(),
-      };
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.stats, required this.onRefresh, required this.onExportCsv});
+class _DesktopHeader extends StatelessWidget {
+  const _DesktopHeader({
+    required this.stats,
+    required this.onRefresh,
+    required this.onDownload,
+  });
 
   final Map<String, dynamic>? stats;
   final VoidCallback onRefresh;
-  final VoidCallback onExportCsv;
+  final void Function(String format) onDownload;
 
   @override
   Widget build(BuildContext context) {
+    final colors      = context.colors;
+    final appState    = EnigmaApp.of(context);
+    final width       = MediaQuery.of(context).size.width;
+    final showSubtitle = width > 800;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(bottom: BorderSide(color: colors.border)),
       ),
       child: Row(
         children: [
           _Logo(),
-          const SizedBox(width: 14),
-          const Text('Система технической поддержки', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          if (showSubtitle) ...[
+            const SizedBox(width: 14),
+            Text(
+              'Система технической поддержки',
+              style: TextStyle(color: colors.textSecondary, fontSize: 13),
+            ),
+          ],
           const Spacer(),
           if (stats != null) ...[
-            _StatBadge(value: '${stats!['total']}', label: 'всего', color: AppColors.text),
+            _StatBadge(
+              value: '${stats!['by_status']?['Новое'] ?? 0}',
+              label: 'новых',
+              color: colors.statusNew,
+            ),
             const SizedBox(width: 12),
-            _StatBadge(value: '${stats!['by_status']?['Новое'] ?? 0}', label: 'новых', color: AppColors.statusNew),
-            const SizedBox(width: 12),
-            _StatBadge(value: '${stats!['by_tone']?['Негатив'] ?? 0}', label: 'негатив', color: AppColors.negative),
+            _StatBadge(
+              value: '${stats!['by_status']?['В работе'] ?? 0}',
+              label: 'в работе',
+              color: colors.neutral,
+            ),
             const SizedBox(width: 16),
           ],
           _IconBtn(icon: Icons.refresh_rounded, label: 'Обновить', onTap: onRefresh),
           const SizedBox(width: 8),
-          _IconBtn(icon: Icons.download_rounded, label: 'CSV', onTap: onExportCsv),
+          _ExportBtn(onDownload: onDownload),
+          const SizedBox(width: 8),
+          _IconBtn(
+            icon:  appState.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+            label: appState.isDark ? 'Светлая' : 'Тёмная',
+            onTap: appState.toggleTheme,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileHeader extends StatelessWidget {
+  const _MobileHeader({
+    required this.stats,
+    required this.onRefresh,
+    required this.onDownload,
+  });
+
+  final Map<String, dynamic>? stats;
+  final VoidCallback onRefresh;
+  final void Function(String format) onDownload;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors   = context.colors;
+    final appState = EnigmaApp.of(context);
+
+    return Container(
+      padding: EdgeInsets.only(
+        left: 16, right: 8,
+        top: MediaQuery.of(context).padding.top + 8,
+        bottom: 8,
+      ),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(bottom: BorderSide(color: colors.border)),
+      ),
+      child: Row(
+        children: [
+          _Logo(),
+          const SizedBox(width: 10),
+          if (stats != null) ...[
+            _StatBadge(
+              value: '${stats!['by_status']?['Новое'] ?? 0}',
+              label: 'новых',
+              color: colors.statusNew,
+            ),
+            const SizedBox(width: 10),
+            _StatBadge(
+              value: '${stats!['by_status']?['В работе'] ?? 0}',
+              label: 'в работе',
+              color: colors.neutral,
+            ),
+          ],
+          const Spacer(),
+          IconButton(
+            onPressed: onRefresh,
+            icon: Icon(Icons.refresh_rounded, color: colors.accent, size: 20),
+            tooltip: 'Обновить',
+          ),
+          _MobileExportBtn(onDownload: onDownload),
+          IconButton(
+            onPressed: appState.toggleTheme,
+            icon: Icon(
+              appState.isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: colors.accent,
+              size: 20,
+            ),
+            tooltip: appState.isDark ? 'Светлая тема' : 'Тёмная тема',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExportBtn extends StatelessWidget {
+  const _ExportBtn({required this.onDownload});
+  final void Function(String format) onDownload;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return PopupMenuButton<String>(
+      onSelected: onDownload,
+      color: colors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: colors.border),
+      ),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'csv',
+          child: Row(children: [
+            Icon(Icons.table_rows_outlined, size: 15, color: colors.accent),
+            const SizedBox(width: 8),
+            Text('Скачать CSV', style: TextStyle(color: colors.text, fontSize: 13)),
+          ]),
+        ),
+        PopupMenuItem(
+          value: 'xlsx',
+          child: Row(children: [
+            Icon(Icons.grid_on_outlined, size: 15, color: colors.accent),
+            const SizedBox(width: 8),
+            Text('Скачать XLSX', style: TextStyle(color: colors.text, fontSize: 13)),
+          ]),
+        ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: colors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.download_rounded, color: colors.accent, size: 15),
+            const SizedBox(width: 6),
+            Text('Экспорт', style: TextStyle(color: colors.text, fontSize: 12)),
+            const SizedBox(width: 4),
+            Icon(Icons.arrow_drop_down, color: colors.textSecondary, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileExportBtn extends StatelessWidget {
+  const _MobileExportBtn({required this.onDownload});
+  final void Function(String format) onDownload;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return PopupMenuButton<String>(
+      onSelected: onDownload,
+      color: colors.card,
+      icon: Icon(Icons.download_rounded, color: colors.accent, size: 20),
+      tooltip: 'Экспорт',
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: colors.border),
+      ),
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'csv',
+          child: Text('Скачать CSV', style: TextStyle(color: colors.text, fontSize: 13)),
+        ),
+        PopupMenuItem(
+          value: 'xlsx',
+          child: Text('Скачать XLSX', style: TextStyle(color: colors.text, fontSize: 13)),
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopTabBar extends StatelessWidget {
+  const _DesktopTabBar({required this.selected, required this.onSelect});
+
+  final int selected;
+  final ValueChanged<int> onSelect;
+
+  static const _tabs = [
+    (Icons.inbox_outlined, 'Обращения'),
+    (Icons.bar_chart_outlined, 'Аналитика'),
+    (Icons.add_box_rounded, 'Создать обращение'),
+    (Icons.library_books_rounded, 'База знаний'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      color: colors.surface,
+      child: Row(
+        children: List.generate(_tabs.length, (i) {
+          final active = selected == i;
+          return InkWell(
+            onTap: () => onSelect(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(
+                  color: active ? colors.accent : Colors.transparent,
+                  width: 2,
+                )),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _tabs[i].$1,
+                    size: 14,
+                    color: active ? colors.accent : colors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _tabs[i].$2,
+                    style: TextStyle(
+                      color:      active ? colors.accent : colors.textSecondary,
+                      fontSize:   13,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _MobileNavBar extends StatelessWidget {
+  const _MobileNavBar({required this.selected, required this.onSelect});
+
+  final int selected;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.border)),
+      ),
+      child: NavigationBar(
+        backgroundColor: colors.surface,
+        indicatorColor: colors.accentDim,
+        selectedIndex: selected,
+        onDestinationSelected: onSelect,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: [
+          NavigationDestination(
+            icon:         Icon(Icons.inbox_outlined,        color: colors.textSecondary),
+            selectedIcon: Icon(Icons.inbox,                 color: colors.accent),
+            label: 'Обращения',
+          ),
+          NavigationDestination(
+            icon:         Icon(Icons.bar_chart_outlined,    color: colors.textSecondary),
+            selectedIcon: Icon(Icons.bar_chart,             color: colors.accent),
+            label: 'Аналитика',
+          ),
+          NavigationDestination(
+            icon:         Icon(Icons.add_box_outlined,      color: colors.textSecondary),
+            selectedIcon: Icon(Icons.add_box_rounded,       color: colors.accent),
+            label: 'Создать',
+          ),
+          NavigationDestination(
+            icon:         Icon(Icons.library_books_outlined, color: colors.textSecondary),
+            selectedIcon: Icon(Icons.library_books_rounded,  color: colors.accent),
+            label: 'Знания',
+          ),
         ],
       ),
     );
@@ -106,14 +412,16 @@ class _Header extends StatelessWidget {
 class _Logo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.accentDim,
+        color: colors.accentDim,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.accent.withOpacity(0.4)),
+        border: Border.all(color: colors.accent.withOpacity(0.4)),
       ),
-      child: const Text('ЭРИС', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 2)),
+      child: Text('ЭРИС',
+          style: TextStyle(color: colors.accent, fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 2)),
     );
   }
 }
@@ -127,11 +435,12 @@ class _StatBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+        Text(label, style: TextStyle(color: colors.textSecondary, fontSize: 10)),
       ],
     );
   }
@@ -146,62 +455,25 @@ class _IconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: colors.card,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: colors.border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: AppColors.accent, size: 15),
+            Icon(icon, color: colors.accent, size: 15),
             const SizedBox(width: 6),
-            Text(label, style: const TextStyle(color: AppColors.text, fontSize: 12)),
+            Text(label, style: TextStyle(color: colors.text, fontSize: 12)),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _TabBar extends StatelessWidget {
-  const _TabBar({required this.tabs, required this.selected, required this.onSelect});
-
-  final List<String> tabs;
-  final int selected;
-  final ValueChanged<int> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.surface,
-      child: Row(
-        children: List.generate(tabs.length, (i) {
-          final active = selected == i;
-          return InkWell(
-            onTap: () => onSelect(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: active ? AppColors.accent : Colors.transparent, width: 2)),
-              ),
-              child: Text(
-                tabs[i],
-                style: TextStyle(
-                  color: active ? AppColors.accent : AppColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-            ),
-          );
-        }),
       ),
     );
   }

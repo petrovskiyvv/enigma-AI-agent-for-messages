@@ -2,21 +2,86 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15
+    image: pgvector/pgvector:pg15   # pgvector встроен, заменяем postgres:15
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: enigma_db
+      POSTGRES_DB: enigma
+      POSTGRES_USER: enigma
+      POSTGRES_PASSWORD: enigma
     ports:
       - "5432:5432"
     volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - db_data:/var/lib/postgresql/data
+      - ./init.sql:/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U enigma -d enigma"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  db_init:
+    image: pgvector/pgvector:pg15
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: enigma
+    volumes:
+      - ./init.sql:/init.sql:ro
+    command: >
+      sh -c "psql -h db -U enigma -d enigma -v ON_ERROR_STOP=1 -f /init.sql"
 
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db_init:
+        condition: service_completed_successfully
     environment:
-      DATABASE_URL: postgresql://admin:password@db:5432/enigma_db
+      DATABASE_URL: postgresql://enigma:enigma@db:5432/enigma
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+    volumes:
+      - knowledge_docs:/knowledge_docs  # общий том для документов
+
+  bot:
+    build: ./backend
+    command: ["python", "-m", "app.bot.bot_service"]
+    depends_on:
+      db_init:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://enigma:enigma@db:5432/enigma
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+
+  email_worker:
+    build: ./backend
+    command: ["python", "-m", "app.email.imap_worker"]
+    depends_on:
+      db_init:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://enigma:enigma@db:5432/enigma
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      IMAP_HOST: ${IMAP_HOST}
+      IMAP_PORT: ${IMAP_PORT:-993}
+      IMAP_USER: ${IMAP_USER}
+      IMAP_PASSWORD: ${IMAP_PASSWORD}
+      IMAP_MAILBOX: ${IMAP_MAILBOX:-INBOX}
+      IMAP_POLL_INTERVAL: ${IMAP_POLL_INTERVAL:-60}
+    restart: unless-stopped  # перезапускать если упал
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
+  knowledge_docs:  # том для документов базы знаний
