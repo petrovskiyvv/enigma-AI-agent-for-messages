@@ -32,15 +32,34 @@ class ApiClient {
     return _decode(response);
   }
 
+  Future<dynamic> delete(String path) async {
+    final response = await http.delete(Uri.parse('$baseUrl$path'));
+    return _decode(response);
+  }
+
   dynamic _decode(http.Response response) {
+    if (response.statusCode >= 400) {
+      final body = utf8.decode(response.bodyBytes);
+      throw Exception('HTTP ${response.statusCode}: $body');
+    }
     return json.decode(utf8.decode(response.bodyBytes));
   }
 }
 
 String _getBaseUrl() {
-  if (kIsWeb) return 'http://127.0.0.1:8000';
-  if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000';
-  return 'http://127.0.0.1:8000';
+  if (kIsWeb) {
+    try {
+      final uri = Uri.base;
+      final host = uri.host;
+      final port = uri.port;
+      if (port == 8080 || host != 'localhost') {
+        return '';
+      }
+    } catch (_) {}
+    return 'http://localhost:8000';
+  }
+  if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+  return 'http://localhost:8000';
 }
 
 final apiClient = ApiClient(baseUrl: _getBaseUrl());

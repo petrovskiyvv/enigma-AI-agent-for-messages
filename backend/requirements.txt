@@ -7,3 +7,15 @@ pydantic-settings
 python-multipart
 openpyxl
 httpx
+
+# AI
+groq
+
+# RAG / эмбеддинги
+sentence-transformers
+pgvector
+
+# Парсинг документов
+python-docx
+pdfplumber
+PyPDF2

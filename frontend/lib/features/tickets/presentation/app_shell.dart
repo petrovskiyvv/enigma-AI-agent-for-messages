@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/responsive.dart';
 import '../../analyze/presentation/analyze_screen.dart';
+import '../../knowledge/presentation/knowledge_screen.dart';
 import '../../stats/presentation/stats_screen.dart';
 import '../../tickets/data/ticket_repository.dart';
 import '../../tickets/presentation/tickets_screen.dart';
@@ -58,6 +59,7 @@ class _AppShellState extends State<AppShell> {
     0 => TicketsScreen(onStatsChanged: _loadStats),
     1 => const StatsScreen(),
     2 => AnalyzeScreen(onTicketCreated: _loadStats),
+    3 => const KnowledgeScreen(),
     _ => const SizedBox.shrink(),
   };
 
@@ -307,7 +309,12 @@ class _DesktopTabBar extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onSelect;
 
-  static const _tabs = ['Обращения', 'Аналитика', 'Создать обращение'];
+  static const _tabs = [
+    (Icons.inbox_outlined, 'Обращения'),
+    (Icons.bar_chart_outlined, 'Аналитика'),
+    (Icons.add_box_rounded, 'Создать обращение'),
+    (Icons.library_books_rounded, 'База знаний'),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -328,13 +335,24 @@ class _DesktopTabBar extends StatelessWidget {
                   width: 2,
                 )),
               ),
-              child: Text(
-                _tabs[i],
-                style: TextStyle(
-                  color:      active ? colors.accent : colors.textSecondary,
-                  fontSize:   13,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.normal,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _tabs[i].$1,
+                    size: 14,
+                    color: active ? colors.accent : colors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _tabs[i].$2,
+                    style: TextStyle(
+                      color:      active ? colors.accent : colors.textSecondary,
+                      fontSize:   13,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -376,9 +394,14 @@ class _MobileNavBar extends StatelessWidget {
             label: 'Аналитика',
           ),
           NavigationDestination(
-            icon:         Icon(Icons.auto_awesome_outlined, color: colors.textSecondary),
-            selectedIcon: Icon(Icons.auto_awesome,          color: colors.accent),
+            icon:         Icon(Icons.add_box_outlined,      color: colors.textSecondary),
+            selectedIcon: Icon(Icons.add_box_rounded,       color: colors.accent),
             label: 'Создать',
+          ),
+          NavigationDestination(
+            icon:         Icon(Icons.library_books_outlined, color: colors.textSecondary),
+            selectedIcon: Icon(Icons.library_books_rounded,  color: colors.accent),
+            label: 'Знания',
           ),
         ],
       ),
