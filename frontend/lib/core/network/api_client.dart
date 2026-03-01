@@ -47,11 +47,19 @@ class ApiClient {
 }
 
 String _getBaseUrl() {
-  // В web-сборке используем относительные URL — nginx проксирует /api/ на бэкенд.
-  // Это работает как локально (localhost:8080), так и на любом сервере.
-  if (kIsWeb) return '';
-  if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000';
-  return 'http://127.0.0.1:8000';
+  if (kIsWeb) {
+    try {
+      final uri = Uri.base;
+      final host = uri.host;
+      final port = uri.port;
+      if (port == 8080 || host != 'localhost') {
+        return '';
+      }
+    } catch (_) {}
+    return 'http://localhost:8000';
+  }
+  if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+  return 'http://localhost:8000';
 }
 
 final apiClient = ApiClient(baseUrl: _getBaseUrl());

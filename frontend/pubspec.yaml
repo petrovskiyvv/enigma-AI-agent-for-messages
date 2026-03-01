@@ -11,8 +11,9 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.8
   http: ^1.6.0
-  http_parser: ^4.0.2      # нужен для multipart upload (загрузка документов)
+  http_parser: ^4.0.2
   url_launcher: ^6.3.0
+  file_picker: ^8.1.2
 
 dev_dependencies:
   flutter_test:

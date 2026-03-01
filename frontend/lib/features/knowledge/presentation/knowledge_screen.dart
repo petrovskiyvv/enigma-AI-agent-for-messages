@@ -7,6 +7,7 @@ import 'dart:convert';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import 'file_picker_interface.dart';
 
 // ── Репозиторий ──────────────────────────────────────────────────────────────
 
@@ -22,10 +23,10 @@ class _KnowledgeDoc {
   final String uploadedAt;
 
   factory _KnowledgeDoc.fromJson(Map<String, dynamic> j) => _KnowledgeDoc(
-        source:     j['source'] as String,
-        chunks:     j['chunks'] as int,
-        uploadedAt: j['uploaded_at'] as String? ?? '',
-      );
+    source:     j['source'] as String,
+    chunks:     j['chunks'] as int,
+    uploadedAt: j['uploaded_at'] as String? ?? '',
+  );
 }
 
 class _KnowledgeRepository {
@@ -135,7 +136,7 @@ class _KnowledgeScreenState extends State<KnowledgeScreen> {
     try {
       final result = await _repo.uploadBytes(bytes: bytes, filename: filename);
       setState(() => _uploadStatus =
-          '✅ ${result['source']} — создано ${result['chunks']} фрагментов');
+      '✅ ${result['source']} — создано ${result['chunks']} фрагментов');
       await _load();
     } catch (e) {
       setState(() => _uploadStatus = '❌ Ошибка: $e');
@@ -279,10 +280,10 @@ class _UploadButton extends StatelessWidget {
       onPressed: uploading ? null : () => _pick(context),
       icon: uploading
           ? SizedBox(
-              width: 14, height: 14,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: colors.bg),
-            )
+        width: 14, height: 14,
+        child: CircularProgressIndicator(
+            strokeWidth: 2, color: colors.bg),
+      )
           : const Icon(Icons.upload_file_rounded, size: 16),
       label: Text(uploading ? 'Загружаю...' : 'Загрузить документ'),
       style: ElevatedButton.styleFrom(
@@ -298,15 +299,13 @@ class _UploadButton extends StatelessWidget {
 
 /// Web file picker — работает только в браузере
 void _pickWebFile(
-  BuildContext context,
-  Future<void> Function(Uint8List, String) onUpload,
-) {
-  // dart:html недоступен напрямую в обычном импорте
-  // используем js через conditional import или universal_html
-  // Здесь — заглушка, реальная реализация в knowledge_screen_web.dart
-  throw UnsupportedError(
-      'Загрузка файлов поддерживается только в web-сборке. '
-      'Подключи пакет file_picker или universal_html.');
+    BuildContext context,
+    Future<void> Function(Uint8List, String) onUpload,
+    ) {
+  // Делегируем платформо-специфичной реализации:
+  // web → file_picker_web.dart (dart:html)
+  // mobile/desktop → file_picker_mobile.dart (file_picker пакет)
+  pickFile(context, onUpload);
 }
 
 // ── Карточка документа ────────────────────────────────────────────────────────
