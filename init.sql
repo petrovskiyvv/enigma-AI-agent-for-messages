@@ -3,6 +3,9 @@
 
 BEGIN;
 
+-- pgvector extension (нужен для хранения эмбеддингов)
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- --- TICKETS ---------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS tickets (
   id              BIGSERIAL PRIMARY KEY,
@@ -20,6 +23,25 @@ CREATE TABLE IF NOT EXISTS tickets (
   ai_response     TEXT,
   status          TEXT NOT NULL DEFAULT 'Новое'
 );
+
+-- --- БАЗА ЗНАНИЙ (RAG-чанки) -----------------------------------------------
+CREATE TABLE IF NOT EXISTS knowledge_chunks (
+  id          BIGSERIAL PRIMARY KEY,
+  source      TEXT NOT NULL,          -- имя файла-источника
+  chunk_index INTEGER NOT NULL,       -- порядковый номер чанка в файле
+  chunk_text  TEXT NOT NULL,          -- текст чанка
+  embedding   vector(384),            -- эмбеддинг paraphrase-multilingual-MiniLM-L12-v2
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Индекс для быстрого косинусного поиска
+CREATE INDEX IF NOT EXISTS idx_knowledge_embedding
+  ON knowledge_chunks USING ivfflat (embedding vector_cosine_ops)
+  WITH (lists = 50);
+
+-- Уникальность: один файл — один набор чанков
+CREATE UNIQUE INDEX IF NOT EXISTS uq_knowledge_chunk
+  ON knowledge_chunks (source, chunk_index);
 
 -- --- TELEGRAM CHANNELS ------------------------------------------------------
 CREATE TABLE IF NOT EXISTS telegram_channels (
@@ -60,12 +82,10 @@ CREATE TABLE IF NOT EXISTS ticket_events (
   prev      TEXT
 );
 
--- Prevent duplicates if init.sql is executed repeatedly
 CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_events_dedupe
   ON ticket_events (ticket_id, ts, type);
 
 -- --- SEEDS -----------------------------------------------------------------
--- Demo tickets (formerly in-memory). Use fixed IDs for compatibility.
 INSERT INTO tickets (
   id, created_at, full_name, facility, phone, email,
   device_numbers, device_type, emotional_tone, category,
